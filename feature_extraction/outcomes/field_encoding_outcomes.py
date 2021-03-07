@@ -31,7 +31,7 @@ field_outcome_feature_names = [
     # 'is_x_axis_src',
     # 'is_y_axis_src',
 
-    # Multiple occurrences
+    # Multiple occurrences          # 是第几个该src，包含重复
     'num_xsrc',
     'num_ysrc',
     'num_zsrc',
@@ -144,10 +144,8 @@ def extract_field_outcomes(chart_obj):
                 field_outcomes[field_id]['trace_type'] = t
 
             # Add axis data
-            if d.get('xaxis'):
-                x_axes.append(d.get('xaxis'))
-            if d.get('yaxis'):
-                y_axes.append(d.get('yaxis'))
+            if d.get('xaxis'): x_axes.append(d.get('xaxis'))
+            if d.get('yaxis'): y_axes.append(d.get('yaxis'))
             if d.get('xaxis') or d.get('yaxis'):
                 axes.append([d.get('xaxis'), d.get('yaxis')])
 
@@ -195,10 +193,8 @@ def extract_field_outcomes(chart_obj):
         y_layout_axes = []
 
         for k in layout.keys():
-            if 'xaxis' in k:
-                x_layout_axes.append(k)
-            if 'yaxis' in k:
-                y_layout_axes.append(k)
+            if 'xaxis' in k: x_layout_axes.append(k)
+            if 'yaxis' in k: y_layout_axes.append(k)
 
     except Exception as e:
         return field_outcomes.values()

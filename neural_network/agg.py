@@ -2,9 +2,7 @@
 import ml.evaluate as evaluate
 import ml.util as util
 import ml.train as train
-from helpers.processing import *
-from helpers.analysis import *
-from imblearn.over_sampling import RandomOverSampler
+
 import pandas as pd
 import scipy as sc
 import numpy as np
@@ -14,10 +12,15 @@ import os
 import sys
 sys.path.insert(0, '..')
 
+from helpers.processing import *
+from helpers.analysis import *
+from imblearn.over_sampling import RandomOverSampler
+
 
 RANDOM_STATE = 42
 
-features_directory = '../features/processed'
+# features_directory = '../features/processed'
+features_directory = '../features/raw_1k'
 saves_directory = './saves'
 num_datapoints = None  # None if you want all
 
@@ -74,8 +77,8 @@ def main():
     # test_best: test the test accuracy of the best model we've found (best
     # model determined using val accuracy)
 
-    # note: training is automatically stopped when learning rate < 0.01 *
-    # starting learning rate
+    # note: training is automatically stopped when learning rate < 0.01 * starting learning rate
+
     parameters = {
         'batch_size': 200,
         'num_epochs': 100,
@@ -87,10 +90,14 @@ def main():
         'patience': 20,
         'threshold': 1e-3,
         'model_prefix': 'agg',
-        'save_model': False,
+        'save_model': True,
         'print_test': True,
-        'test_best': False
+        'test_best': False,
+        'use_cuda': False
     }
+
+    if parameters['use_cuda'] == True: 
+        os.environ["CUDA_VISIBLE_DEVICES"] = 6
 
     # LOAD loads the unfiltered features from the .csv files and converts them into filtered .npy files into ~/saves
     # TRAIN trains using the given parameters and .npy files
@@ -125,7 +132,10 @@ def main():
     elif command == 'eval':
         assert len(sys.argv) >= 3
         model_suffix = sys.argv[2]
-        evaluate.evaluate(model_suffix, X_test, y_test, parameters)
+        train_dataloader, val_dataloader, test_dataloader = train.load_datasets(
+            X_train, y_train, X_val, y_val, parameters, X_test=X_test, y_test=y_test)
+        # evaluate.evaluate(model_suffix, X_test, y_test, parameters)
+        evaluate.evaluate(model_suffix, test_dataloader, parameters)
     else:
         assert False, 'The command must either be LOAD, TRAIN, or EVAL'
 

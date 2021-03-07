@@ -14,12 +14,10 @@ def extract_aggregate_single_field_features(single_field_features):
         feature_type = field_feature['type']
         if feature_type == 'boolean':
             for c_aggregation_function in c_aggregation_functions:
-                final_field_features['{}-agg-{}'.format(
-                    feature_name, c_aggregation_function)] = None
+                final_field_features[ '{}-agg-{}'.format(feature_name, c_aggregation_function) ] = None
         if feature_type == 'numeric':
             for q_aggregation_function in q_aggregation_functions:
-                final_field_features['{}-agg-{}'.format(
-                    feature_name, q_aggregation_function)] = None
+                final_field_features[ '{}-agg-{}'.format(feature_name, q_aggregation_function) ] = None
 
     for field_feature in all_field_features_list:
         feature_name = field_feature['name']
@@ -34,13 +32,11 @@ def extract_aggregate_single_field_features(single_field_features):
             continue
 
         if feature_type == 'boolean':
-            for k, v in aggregate_boolean_features(
-                    field_feature_values, feature_name).items():
+            for k, v in aggregate_boolean_features(field_feature_values, feature_name).items():
                 final_field_features[k] = v
 
         if feature_type == 'numeric':
-            for k, v in aggregate_numeric_features(
-                    field_feature_values, feature_name).items():
+            for k, v in aggregate_numeric_features(field_feature_values, feature_name).items():
                 final_field_features[k] = v
 
     dataset_field_types = []
@@ -58,9 +54,7 @@ def extract_aggregate_single_field_features(single_field_features):
             if f['general_type_is_{}'.format(general_type)]:
                 dataset_general_types.append(general_type)
 
-    final_field_features['data_type_entropy'] = list_entropy(
-        dataset_field_types)
-    final_field_features['general_type_entropy'] = list_entropy(
-        dataset_general_types)
+    final_field_features['data_type_entropy']    = list_entropy(dataset_field_types)
+    final_field_features['general_type_entropy'] = list_entropy(dataset_general_types)
 
     return final_field_features

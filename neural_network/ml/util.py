@@ -81,40 +81,45 @@ def load_matrices_from_disk(saves_directory, prefix, num_datapoints):
         prefix +
         '_X_train_' +
         str(num_datapoints) +
-        '.npy')
+        '.npy', 
+        allow_pickle=True)
     y_train = np.load(
         saves_directory +
         '/' +
         prefix +
         '_y_train_' +
         str(num_datapoints) +
-        '.npy')
+        '.npy', 
+        allow_pickle=True)
     X_val = np.load(
         saves_directory +
         '/' +
         prefix +
         '_X_val_' +
         str(num_datapoints) +
-        '.npy')
+        '.npy', 
+        allow_pickle=True)
     y_val = np.load(
         saves_directory +
         '/' +
         prefix +
         '_y_val_' +
         str(num_datapoints) +
-        '.npy')
+        '.npy', 
+        allow_pickle=True)
     X_test = np.load(
         saves_directory +
         '/' +
         prefix +
         '_X_test_' +
         str(num_datapoints) +
-        '.npy')
+        '.npy', 
+        allow_pickle=True)
     y_test = np.load(
         saves_directory +
         '/' +
         prefix +
         '_y_test_' +
         str(num_datapoints) +
-        '.npy')
+        '.npy', allow_pickle=True)
     return X_train, y_train, X_val, y_val, X_test, y_test

@@ -15,12 +15,10 @@ def extract_aggregate_pairwise_field_features(pairwise_field_features):
 
         if feature_type == 'boolean':
             for c_aggregation_function in c_aggregation_functions:
-                final_field_features['{}-agg-{}'.format(
-                    feature_name, c_aggregation_function)] = None
+                final_field_features['{}-agg-{}'.format(feature_name, c_aggregation_function)] = None
         if feature_type == 'numeric':
             for q_aggregation_function in q_aggregation_functions:
-                final_field_features['{}-agg-{}'.format(
-                    feature_name, q_aggregation_function)] = None
+                final_field_features['{}-agg-{}'.format(feature_name, q_aggregation_function)] = None
 
     flattened_field_features = []
 

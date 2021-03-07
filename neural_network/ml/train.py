@@ -17,8 +17,7 @@ import time
 # converts these inputs to dataloaders, for use in PyTorch training
 
 
-def load_datasets(X_train, y_train, X_val, y_val,
-                  parameters, X_test=None, y_test=None):
+def load_datasets(X_train, y_train, X_val, y_val, parameters, X_test=None, y_test=None):
     batch_size = parameters.get('batch_size', 200)
     print_test = parameters.get('print_test', False) and (X_test is not None)
 
@@ -26,6 +25,7 @@ def load_datasets(X_train, y_train, X_val, y_val,
     y_combined = np.concatenate((y_train, y_val))
     if y_test is not None:
         y_combined = np.concatenate((y_combined, y_test))
+    
     output_dim = len(np.unique(y_combined))
     print('output_dim is', output_dim)
     parameters['input_dim'] = X_train.shape[1]
@@ -34,11 +34,14 @@ def load_datasets(X_train, y_train, X_val, y_val,
     # datasets
     # convert np matrices into torch Variables, and then feed them into a
     # dataloader
-    X_train, y_train = torch.from_numpy(
-        X_train).float(), torch.from_numpy(y_train)
-    X_val, y_val = torch.from_numpy(X_val).float(), torch.from_numpy(y_val)
+    # X_train = torch.from_numpy(X_train).float()
+    X_train = torch.from_numpy(X_train.astype(float))
+    y_train = torch.from_numpy(y_train)
+    X_val = torch.from_numpy(X_val.astype(float))
+    y_val = torch.from_numpy(y_val)
     train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
     val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
+    
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset, shuffle=True, batch_size=batch_size, num_workers=0)
     val_dataloader = torch.utils.data.DataLoader(
@@ -46,8 +49,8 @@ def load_datasets(X_train, y_train, X_val, y_val,
     test_dataloader = None
 
     if X_test is not None:
-        X_test, y_test = torch.from_numpy(
-            X_test).float(), torch.from_numpy(y_test)
+        X_test = torch.from_numpy(X_test.astype(float))
+        y_test = torch.from_numpy(y_test)
         test_dataset = torch.utils.data.TensorDataset(X_test, y_test)
         test_dataloader = torch.utils.data.DataLoader(
             test_dataset, shuffle=True, batch_size=batch_size, num_workers=0)
@@ -74,12 +77,13 @@ def train(train_dataloader, val_dataloader, test_dataloader,
     threshold = parameters.get('threshold', 1e-3)
     input_dim = parameters['input_dim']
     output_dim = parameters['output_dim']
+    use_cuda = parameters['use_cuda']
 
     # output_period: output training loss every x batches
     output_period = parameters.get('output_period', 0)
     model_prefix = parameters.get('model_prefix', None)
     only_train = parameters.get('only_train', False)
-    save_model = parameters.get('save_model', False)
+    save_model = parameters.get('save_model', True)
     test_best = parameters.get('test_best', False)
     print_test = parameters.get(
         'print_test', False) and (
@@ -95,16 +99,21 @@ def train(train_dataloader, val_dataloader, test_dataloader,
                                    for k, v in sorted(parameters.items())]) + '\n\n')
 
     # nets and optimizers
-    criterion = nn.CrossEntropyLoss().cuda()
+    criterion = nn.CrossEntropyLoss()
     net = nets.AdvancedNet(
         input_dim,
         hidden_sizes,
         output_dim,
-        dropout=dropout).cuda()
+        dropout=dropout)
     optimizer = optim.Adam(
         net.parameters(),
         lr=learning_rate,
         weight_decay=weight_decay)
+    
+    if use_cuda:
+        criterion = criterion.cuda()
+        net = net.cuda()
+
     # ReduceLROnPlateau reduces learning rate by factor of 10 once val loss
     # has plateaued
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -129,7 +138,10 @@ def train(train_dataloader, val_dataloader, test_dataloader,
             util.get_time())
         for batch_num, (inputs, labels) in enumerate(train_dataloader, 1):
             optimizer.zero_grad()
-            inputs, labels = inputs.cuda(), labels.cuda()
+            if use_cuda: 
+                inputs = inputs.cuda()
+                labels = labels.cuda()
+            net = net.double()  # to fix error: RuntimeError: expected scalar type Float but found Double
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
@@ -169,7 +181,7 @@ def train(train_dataloader, val_dataloader, test_dataloader,
             scheduler.step(loss)
         else:
             val_accuracy, total_loss = evaluate.eval_error(
-                net, val_dataloader, criterion)
+                net, val_dataloader, criterion, use_cuda)
             print('val acc: %.4f, loss: %.4f' % (val_accuracy, total_loss))
             # remember: feed val loss into scheduler
             scheduler.step(total_loss)
@@ -180,7 +192,7 @@ def train(train_dataloader, val_dataloader, test_dataloader,
             # write test accuracy
             if print_test:
                 test_accuracy, total_loss = evaluate.eval_error(
-                    net, test_dataloader, criterion)
+                    net, test_dataloader, criterion, use_cuda)
                 test_file.write(
                     'epoch: %d' %
                     (epoch) +
@@ -214,7 +226,7 @@ def train(train_dataloader, val_dataloader, test_dataloader,
                 '.' +
                 str(best_epoch)))
         best_test_accuracy, total_loss = evaluate.eval_error(
-            net, test_dataloader, criterion)
+            net, test_dataloader, criterion, use_cuda)
         test_file.write('*****\n')
         test_file.write(
             'best test acc: %.4f, loss: %.4f' %

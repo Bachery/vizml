@@ -86,8 +86,8 @@ def extract_chunk_features(args):
         absolute_chart_num = ((chunk_num - 1) * CHUNK_SIZE) + chart_num
         if absolute_chart_num % 100 == 0:
             print('[Batch %s / Chunk %s][%s] %.1f: %s %s' %
-                  (batch_num, chunk_num, absolute_chart_num, time() -
-                   start_time, fid, 'https://plot.ly/~{0}/{1}'.format(*fid.split(':'))))
+                  (batch_num, chunk_num, absolute_chart_num, time() - start_time, 
+                   fid, 'https://plot.ly/~{0}/{1}'.format(*fid.split(':'))))
 
         fields = table_data[list(table_data.keys())[0]]['cols']
         sorted_fields = sorted(fields.items(), key=lambda x: x[1]['order'])
@@ -100,17 +100,17 @@ def extract_chunk_features(args):
             extraction_results = extract_features_from_fields(
                 sorted_fields, compute_features_config, chart_obj=chart_obj, fid=fid)
 
-            chunk_features_by_num_fields[num_fields - 1].append(
-                extraction_results['df_feature_tuples_if_exists'])
-            chunk_outcomes_by_num_fields[num_fields -
-                                         1].append(extraction_results['df_outcomes_tuples'])
+            chunk_features_by_num_fields[num_fields - 1].append(extraction_results['df_feature_tuples_if_exists'])
+            chunk_outcomes_by_num_fields[num_fields - 1].append(extraction_results['df_outcomes_tuples'])
+
             chunk_features.append(extraction_results['df_feature_tuples'])
             chunk_outcomes.append(extraction_results['df_outcomes_tuples'])
-            chunk_field_level_features.extend(
-                extraction_results['df_field_level_features'])
-            chunk_field_level_outcomes.extend(
-                extraction_results['df_field_level_outcomes'])
+
+            chunk_field_level_features.extend(extraction_results['df_field_level_features'])
+            chunk_field_level_outcomes.extend(extraction_results['df_field_level_outcomes'])
+
             feature_names_by_type = extraction_results['feature_names_by_type']
+
         except Exception as e:
             print('Uncaught exception: {}'.format(e))
             traceback.print_tb(e.__traceback__)
@@ -129,10 +129,9 @@ def extract_chunk_features(args):
     return r
 
 
-def extract_features_from_fields(
-        fields, compute_features_config, chart_obj={}, fid=None):
+def extract_features_from_fields(fields, compute_features_config, chart_obj={}, fid=None):
+    
     results = {}
-
     feature_names_by_type = {
         'basic': ['fid'],
         'single_field': [],
@@ -143,7 +142,7 @@ def extract_features_from_fields(
         'field_outcomes': []
     }
 
-    df_feature_tuples_if_exists = OrderedDict({'fid': fid})
+    df_feature_tuples_if_exists = OrderedDict({'fid': fid}) # 所有维度的所有特征
     df_feature_tuples = OrderedDict({'fid': fid})
     df_outcomes_tuples = OrderedDict()
 
@@ -156,26 +155,24 @@ def extract_features_from_fields(
 
             for field_feature_name, field_feature_value in field_features.items():
                 if field_feature_name not in ['fid', 'field_id']:
-                    field_feature_name_with_num = '{}_{}'.format(
-                        field_feature_name, field_num)
+                    field_feature_name_with_num = '{}_{}'.format(field_feature_name, field_num)
                     if field_features['exists']:
                         df_feature_tuples_if_exists[field_feature_name_with_num] = field_feature_value
 
-        if compute_features_config['field_level_features']:
+        if compute_features_config['field_level_features']:     # df_field_level_features = single_field_features[:维度数]（原本为25个）
             df_field_level_features = []
             for i, f in enumerate(single_field_features):
                 if f['exists']:
                     if compute_features_config['supplement']:
                         f = supplement_features(f)
                     df_field_level_features.append(f)
-                    feature_names_by_type['single_field'] = list(f.keys())
+                    feature_names_by_type['single_field'] = list(f.keys())  # ？这为什么要写在循环里
             results['df_field_level_features'] = df_field_level_features
         results['single_field_features'] = single_field_features
 
     if compute_features_config['aggregate_single_field']:
         aggregate_single_field_features = extract_aggregate_single_field_features(
-            single_field_features
-        )
+            single_field_features)
 
         if compute_features_config['supplement']:
             aggregate_single_field_features = supplement_features(
@@ -221,8 +218,7 @@ def extract_features_from_fields(
 
     if compute_features_config['field_outcomes']:
         field_level_outcomes = extract_field_outcomes(chart_obj)
-        feature_names_by_type['field_outcomes'] = list(
-            list(field_level_outcomes)[0].keys())
+        feature_names_by_type['field_outcomes'] = list(list(field_level_outcomes)[0].keys())
         results['df_field_level_outcomes'] = field_level_outcomes
 
     results['df_feature_tuples'] = df_feature_tuples
@@ -280,12 +276,10 @@ def write_batch_results(batch_results, features_dir_name, write_header=False):
         for i, dataset_features in enumerate(
                 r['dataset_features_by_num_fields']):
             if not dataset_features.empty:
-                batch_dataset_features_dfs_by_num_fields[i].append(
-                    dataset_features)
+                batch_dataset_features_dfs_by_num_fields[i].append( dataset_features )
         for i, chart_outcomes in enumerate(r['chart_outcomes_by_num_fields']):
             if not chart_outcomes.empty:
-                batch_chart_outcomes_dfs_by_num_fields[i].append(
-                    chart_outcomes)
+                batch_chart_outcomes_dfs_by_num_fields[i].append( chart_outcomes )
 
     concatenated_results = {
         'features_df_by_num_fields': [pd.concat(features_dfs, ignore_index=True) for features_dfs in batch_dataset_features_dfs_by_num_fields if features_dfs],

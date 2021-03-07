@@ -1,10 +1,11 @@
-from time import time, strftime
-import pickle
+
+
 import ml.evaluate as evaluate
 import ml.util as util
 import ml.train as train
-from helpers.processing import *
-from helpers.analysis import *
+
+import pickle
+from time import time, strftime
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.utils import resample
@@ -17,6 +18,10 @@ import os
 from os.path import join
 import sys
 sys.path.insert(0, '..')
+
+from helpers.processing import *
+from helpers.analysis import *
+
 
 
 RANDOM_STATE = 42
@@ -2010,15 +2015,16 @@ def main():
             'print_test': True,
             # for constructing learning curves
             'dataset_ratios': [0.01, 0.1, 0.5, 1.0],
-            'test_best': True
+            'test_best': True,
+            'use_cuda': False
         }
 
-        for feature_set in [
-                0, 1, 2, 3]:  # range(0, 4): # dimensions, types, values, names
-            assert len(
-                sys.argv) >= 2, 'You must specify a command LOAD, TRAIN, or EVAL'
-            assert(parameters['model_prefix']
-                   ), 'You must specify a prefix for the model name'
+        if parameters['use_cuda'] == True: 
+            os.environ["CUDA_VISIBLE_DEVICES"] = 6
+
+        for feature_set in [0, 1, 2, 3]:  # range(0, 4): # dimensions, types, values, names
+            assert len(sys.argv) >= 2,          'You must specify a command LOAD, TRAIN, or EVAL'
+            assert(parameters['model_prefix']), 'You must specify a prefix for the model name'
             if 'test_best' in parameters and parameters['test_best']:
                 assert parameters['save_model'], 'You must save a model to test the best version!'
 

@@ -105,3 +105,13 @@ venv.bak/
 
 # System-specific files
 **/.DS_Store
+.vscode
+
+# data
+data/*
+datasets/*
+features/*
+neural_network/saves/*
+
+# results
+models/*

@@ -87,15 +87,11 @@ def extract_chart_outcomes(chart_obj):
 
         xsrc = d.get('xsrc')
         ysrc = d.get('ysrc')
-        if xsrc:
-            x_srcs.append(xsrc)
-        if ysrc:
-            y_srcs.append(ysrc)
+        if xsrc: x_srcs.append(xsrc)
+        if ysrc: y_srcs.append(ysrc)
 
-        if d.get('xaxis'):
-            x_axes.append(d.get('xaxis'))
-        if d.get('yaxis'):
-            y_axes.append(d.get('yaxis'))
+        if d.get('xaxis'):  x_axes.append(d.get('xaxis'))
+        if d.get('yaxis'):  y_axes.append(d.get('yaxis'))
         if d.get('xaxis') or d.get('yaxis'):
             axes.append([d.get('xaxis'), d.get('yaxis')])
 
@@ -117,15 +113,13 @@ def extract_chart_outcomes(chart_obj):
         has_single_src = True
         has_single_x_src = True
         single_x_src_id = list(set(x_srcs))[0]
-        single_x_src_order = fields_by_id[single_x_src_id.split(
-            ':')[-1]]['order']
+        single_x_src_order = fields_by_id[ single_x_src_id.split(':')[-1] ][ 'order' ]
 
     if (len(y_srcs) > 1 and len(set(y_srcs)) == 1):
         has_single_src = True
         has_single_y_src = True
         single_y_src_id = list(set(y_srcs))[0]
-        single_y_src_order = fields_by_id[single_y_src_id.split(
-            ':')[-1]]['order']
+        single_y_src_order = fields_by_id[ single_y_src_id.split(':')[-1] ][ 'order' ]
 
     if has_single_x_src and has_single_y_src:
         both_single_srcs = True
@@ -137,10 +131,8 @@ def extract_chart_outcomes(chart_obj):
     y_layout_axes = []
     # {u'domain': [0, 0.99], u'showticklabels': True, u'autorange': True, u'ticks': u'outside', u'showgrid': True, u'range': [1345815520485.415, 1442917279514.585], u'gridcolor': u'rgb(255,255,255)', u'tickcolor': u'rgb(127,127,127)', u'zeroline': False, u'showline': False, u'type': u'date', u'anchor': u'y'}
     for k in layout.keys():
-        if 'xaxis' in k:
-            x_layout_axes.append(k)
-        if 'yaxis' in k:
-            y_layout_axes.append(k)
+        if 'xaxis' in k: x_layout_axes.append(k)
+        if 'yaxis' in k: y_layout_axes.append(k)
 
     unique_x_axes = set(x_axes)
     unique_y_axes = set(y_axes)

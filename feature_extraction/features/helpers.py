@@ -99,7 +99,8 @@ def parse(v, field_type, field_general_type, drop=True):
     if field_type == 'decimal':
         # localized_v = [ locale.atof(e) for e in v ]
         try:
-            return v.astype(np.integer)
+            # return v.astype(np.integer)               # ？为什么要把浮点数都换成整数去计算特征
+            return v.astype(np.float)
         except ValueError as ve:
             result = []
             for e in v:
@@ -108,7 +109,7 @@ def parse(v, field_type, field_general_type, drop=True):
                 except TypeError as e:
                     raise e
                 except ValueError as e:
-                    continue
+                    continue                            # 维度会缩短……不过上面也有去掉None的操作，应该OK
             return result
 
     if field_type == 'time':

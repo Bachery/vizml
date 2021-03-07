@@ -132,7 +132,7 @@ def get_statistical_pairwise_features(a, b, MAX_GROUPS=50):
             child_field_unique_corresponding_values = []
             unique_parent_field_values = parent['unique_data']
             for unique_parent_field_value in unique_parent_field_values:
-                child_field_unique_corresponding_values.extend(set(df[df[parent['name']] == unique_parent_field_value][child['name']]))
+                child_field_unique_corresponding_values.extend( set( df[ df[parent['name']] == unique_parent_field_value ][ child['name'] ] ) )
             nestedness = get_list_uniqueness(child_field_unique_corresponding_values)     
             nestedness_values.append(nestedness) 
 
@@ -158,6 +158,7 @@ def get_statistical_pairwise_features(a, b, MAX_GROUPS=50):
             r['one_way_anova_statistic'] = anova_result.statistic
             r['one_way_anova_p'] = anova_result.pvalue
             r['one_way_anova_significant_005'] = (anova_result.pvalue < 0.05)
+    
     return r
 
 def get_name_pairwise_features(n1, n2, MAX_NAME_LENGTH=500):

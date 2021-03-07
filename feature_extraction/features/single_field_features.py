@@ -34,7 +34,7 @@ field_existence_features_list = [
     {'name': 'percentage_none', 'type': 'numeric'},
     {'name': 'num_none', 'type': 'numeric'},
 ]
-
+# 只用于 Categorical 或 integer 类型
 field_uniqueness_features_list = [
     {'name': 'num_unique_elements', 'type': 'numeric'},
     {'name': 'unique_percent', 'type': 'numeric'},
@@ -114,14 +114,14 @@ field_name_features_list = [
 ]
 
 field_sequence_features_list = [
-    {'name': 'is_sorted', 'type': 'boolean'},
-    {'name': 'is_monotonic', 'type': 'boolean'},
-    {'name': 'sortedness', 'type': 'numeric'},
+    {'name': 'is_sorted', 'type': 'boolean'},               # for C, T or Q
+    {'name': 'is_monotonic', 'type': 'boolean'},            # for T or Q        # 去掉了None且进行了排序，这有不单调的吗？
+    {'name': 'sortedness', 'type': 'numeric'},              # for T or Q
 
-    {'name': 'lin_space_sequence_coeff', 'type': 'numeric'},
-    {'name': 'log_space_sequence_coeff', 'type': 'numeric'},
-    {'name': 'is_lin_space', 'type': 'boolean'},
-    {'name': 'is_log_space', 'type': 'boolean'},
+    {'name': 'lin_space_sequence_coeff', 'type': 'numeric'},# for Q
+    {'name': 'log_space_sequence_coeff', 'type': 'numeric'},# for Q
+    {'name': 'is_lin_space', 'type': 'boolean'},            # for Q
+    {'name': 'is_log_space', 'type': 'boolean'},            # for Q
 ]
 
 all_field_features_list = \
@@ -295,7 +295,7 @@ def get_sequence_features(v, field_type, field_general_type):
     if field_general_type in ['t', 'q']:
         sequence_incremental_subtraction = np.subtract(
             sorted_v[:-1], sorted_v[1:]).astype(int)
-        r['is_monotonic'] = np.all(
+        r['is_monotonic'] = np.all(                                 # 去掉了None且进行了排序，这有不单调的吗？
             sequence_incremental_subtraction <= 0) or np.all(
             sequence_incremental_subtraction >= 0)
         r['sortedness'] = np.absolute(
@@ -316,10 +316,10 @@ def get_sequence_features(v, field_type, field_general_type):
 
 def extract_single_field_features(fields, fid, timeout=15, MAX_FIELDS=10):
     all_field_features = []
-    for i in range(0, MAX_FIELDS):
+    for i in range(0, MAX_FIELDS):  # 初始化 all_field_features = 25个一模一样的 single_field_feature_set
         single_field_feature_set = OrderedDict()
         for f in all_field_features_list:
-            if f['type'] == 'boolean':
+            if f['type'] == 'boolean':  # type 有 boolean, numeric, id 三种
                 single_field_feature_set[f['name']] = False
             else:
                 single_field_feature_set[f['name']] = None
@@ -358,7 +358,7 @@ def extract_single_field_features(fields, fid, timeout=15, MAX_FIELDS=10):
         name_features = OrderedDict()
         sequence_features = OrderedDict()
         try:
-            v = parse(field_values, field_type, field_general_type)
+            v = parse(field_values, field_type, field_general_type) # 去掉None，把数据存为numpy或pandas格式，v中decimal会被转换成integer，不过field_type还是decimal
             v = np.ma.array(v).compressed()
 
             parsed_field['data'] = v
@@ -366,14 +366,11 @@ def extract_single_field_features(fields, fid, timeout=15, MAX_FIELDS=10):
 
             start_time = time()
             while time() < (start_time + timeout):
-                existence_features = get_existence_features(field_values)
-                uniqueness_features = get_uniqueness_features(
-                    v, field_type, field_general_type)
-                statistical_features = get_statistical_features(
-                    v, field_type, field_general_type)
-                name_features = get_name_features(field_name)
-                sequence_features = get_sequence_features(
-                    v, field_type, field_general_type)
+                existence_features      = get_existence_features    ( field_values )
+                uniqueness_features     = get_uniqueness_features   ( v, field_type, field_general_type )  # 只用于 Categorical 或 integer 类型
+                statistical_features    = get_statistical_features  ( v, field_type, field_general_type )
+                name_features           = get_name_features         ( field_name )
+                sequence_features       = get_sequence_features     ( v, field_type, field_general_type )
                 break
         except Exception as e:
             print(e)
