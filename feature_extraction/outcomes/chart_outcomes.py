@@ -178,4 +178,8 @@ def extract_chart_outcomes(chart_obj):
     # outcomes['chart_data'] = chart_data
     # outcomes['layout'] = layout
 
+    # if outcomes['num_x_axes'] != outcomes['num_y_axes'] and outcomes['one_subplot']==False:
+    # if outcomes['is_all_one_trace_type'] == False:
+        # print('fuck')
+
     return outcomes

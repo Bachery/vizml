@@ -72,9 +72,9 @@ field_q_statistical_features_list = [
     {'name': 'med_abs_dev', 'type': 'numeric'},
     {'name': 'avg_abs_dev', 'type': 'numeric'},
     {'name': 'quant_coeff_disp', 'type': 'numeric'},
-    {'name': 'skewness', 'type': 'numeric'},
-    {'name': 'kurtosis', 'type': 'numeric'},
-    {'name': 'moment_5', 'type': 'numeric'},
+    {'name': 'skewness', 'type': 'numeric'},            # 偏度，也是三阶标准矩。(-∞,+∞)。For normally distributed data, the skewness should be about 0
+    {'name': 'kurtosis', 'type': 'numeric'},            # 峰度，也是四阶标准矩。[1,+∞)。完全正态分布：kurtosis=3
+    {'name': 'moment_5', 'type': 'numeric'},            # 矩。
     {'name': 'moment_6', 'type': 'numeric'},
     {'name': 'moment_7', 'type': 'numeric'},
     {'name': 'moment_8', 'type': 'numeric'},
