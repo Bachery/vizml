@@ -112,6 +112,10 @@ data/*
 datasets/*
 features/*
 neural_network/saves/*
+neural_network/saves_one-per-user/*
 
 # results
-models/*
+neural_network/logs/*
+neural_network/models/*
+neural_network/models_one-per-user/*
+neural_network/*.txt

@@ -21,9 +21,11 @@ sys.path.insert(0, '..')
 RANDOM_STATE = 42
 
 
-features_directory = '../features/processed'
-saves_directory = './saves'
-models_directory = './models'
+# features_directory = '../features/processed'
+features_directory = '../features/features_20180520-005740_processed_99_standard'
+
+saves_directory = './saves_gt'
+models_directory = './models_gt'
 feature_set_lookup_file_name = 'feature_names_by_type.pkl'
 num_datapoints = None  # None if you want all
 
