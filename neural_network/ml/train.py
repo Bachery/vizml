@@ -17,7 +17,7 @@ import time
 # converts these inputs to dataloaders, for use in PyTorch training
 
 
-def load_datasets(X_train, y_train, X_val, y_val, parameters, X_test=None, y_test=None):
+def load_datasets(X_train, y_train, X_val, y_val, parameters, X_test=None, y_test=None, logger=None):
     batch_size = parameters.get('batch_size', 200)
     print_test = parameters.get('print_test', False) and (X_test is not None)
 
@@ -26,10 +26,19 @@ def load_datasets(X_train, y_train, X_val, y_val, parameters, X_test=None, y_tes
     if y_test is not None:
         y_combined = np.concatenate((y_combined, y_test))
     
-    output_dim = len(np.unique(y_combined))
-    print('output_dim is', output_dim)
+    unique, counts = np.unique(y_combined, return_counts=True)
     parameters['input_dim'] = X_train.shape[1]
-    parameters['output_dim'] = output_dim
+    parameters['output_dim'] = len(unique)
+
+    if logger:
+        logger.log('output_dim is: ' + str(len(unique)))
+        logger.log_dict(dict(zip(unique, counts)))
+        logger.log('X_train shape: ' + str(X_train.shape))
+        logger.log('X_val   shape: ' + str(X_val.shape))
+        logger.log('X_test  shape: ' + str(X_test.shape))
+        logger.log('y_train shape: ' + str(y_train.shape))
+        logger.log('y_val   shape: ' + str(y_val.shape))
+        logger.log('y_test  shape: ' + str(y_test.shape))
 
     # datasets
     # convert np matrices into torch Variables, and then feed them into a
@@ -61,7 +70,7 @@ def load_datasets(X_train, y_train, X_val, y_val, parameters, X_test=None, y_tes
 # trains a NN with parameters specified in parameters, with the dataloaders
 # test_dataloader can be done
 def train(train_dataloader, val_dataloader, test_dataloader,
-          parameters, models_directory='../models', suffix=''):
+          parameters, models_directory='../models', suffix='', logger=None):
     print('Starting training at ' + util.get_time())
     print(', '.join(['{}={!r}'.format(k, v)
                      for k, v in sorted(parameters.items())]))
@@ -92,11 +101,13 @@ def train(train_dataloader, val_dataloader, test_dataloader,
     # we want to print out test accuracies to a separate file
     test_file = None
     if print_test:
-        test_file = open('test{}.txt'.format(suffix), 'a')
+        test_file = open('logs/test{}_{}.txt'.format(suffix, parameters['model_prefix'].split('_')[-1]), 'a')
         test_file.write('\n\n')
         test_file.write('Starting at ' + util.get_time() + '\n')
         test_file.write(', '.join(['{}={!r}'.format(k, v)
                                    for k, v in sorted(parameters.items())]) + '\n\n')
+    logger.log_dict(parameters)
+    logger.log('\n')
 
     # nets and optimizers
     criterion = nn.CrossEntropyLoss()

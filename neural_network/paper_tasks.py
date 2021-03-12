@@ -1898,7 +1898,7 @@ def load_features(task):
     # load_logger.log('\n')
     # load_logger.log(features_df)
     load_logger.log('Initial Features: ' + str(features_df.shape))
-    load_logger.log('Initial Outcomes: ' + str(outcomes_df.shape) + '\n')
+    load_logger.log('Initial Outcomes: ' + str(outcomes_df.shape))
 
     if task['dataset'] == 'field':
         def is_x_or_y(is_xsrc, is_ysrc):
@@ -1975,7 +1975,11 @@ def load_features(task):
     # print('Final Features:', X.shape)
     # print('Final Outcomes:', y.shape)
     load_logger.log('Final Features:' + str(X.shape))
-    load_logger.log('Final Outcomes:' + str(y.shape) + '\n')
+    load_logger.log('Final Outcomes:' + str(y.shape))
+    unique, counts = np.unique(y, return_counts=True)
+    load_logger.log('Value counts after sampling:')
+    load_logger.log_dict(dict(zip(unique, counts)))
+    load_logger.log('\n')
 
     del load_logger
     return util.unison_shuffle(X, y)
@@ -1998,9 +2002,9 @@ def main():
              {'outcome_variable_name': 'has_single_src', 'prediction_task': 'two',
               'sampling_mode': 'over', 'pref_id': 4, 'dataset': 'dataset'},
              {'outcome_variable_name': 'num_x_axes', 'prediction_task': 'numeric',
-              'sampling_mode': 10000, 'pref_id': 5, 'dataset': 'dataset'},
+              'sampling_mode': 'over', 'pref_id': 5, 'dataset': 'dataset'},         #10000
              {'outcome_variable_name': 'num_y_axes', 'prediction_task': 'numeric',
-              'sampling_mode': 10000, 'pref_id': 6, 'dataset': 'dataset'},
+              'sampling_mode': 'over', 'pref_id': 6, 'dataset': 'dataset'},          #10000
              {'outcome_variable_name': 'trace_type', 'prediction_task': 'two',
               'sampling_mode': 'over', 'pref_id': 7, 'dataset': 'field'},
              {'outcome_variable_name': 'trace_type', 'prediction_task': 'three',
@@ -2013,7 +2017,7 @@ def main():
               'sampling_mode': 'over', 'pref_id': 11, 'dataset': 'field'},
              ]
 
-    for i in range(2, 12):  # range(7, len(tasks)):
+    for i in [6]: #range(2, 12):  # range(7, len(tasks)):
         task = tasks[i]
         model_prefix = 'paper_' + task['dataset'] + '_' + str(task['pref_id'])
 
@@ -2038,7 +2042,7 @@ def main():
         }
 
         if parameters['use_cuda'] == True: 
-            os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+            os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
         for feature_set in [3]:  #[0, 1, 2, 3]:  # range(0, 4): # dimensions, types, values, names
             assert len(sys.argv) >= 2,          'You must specify a command LOAD, TRAIN, or EVAL'
@@ -2069,20 +2073,26 @@ def main():
                       str(task['pref_id']) + ',' + str(feature_set) + ')')
 
                 if command == 'train':
+                    log_file = log_dir + 'training_task_' + str(task['pref_id']) + '.txt'
+                    train_logger = logger(log_file, task)
                     train_dataloader, val_dataloader, test_dataloader = train.load_datasets(
-                        X_train, y_train, X_val, y_val, parameters, X_test=X_test, y_test=y_test)
+                        X_train, y_train, X_val, y_val, parameters, X_test, y_test, train_logger)
                     train.train(
                         train_dataloader,
                         val_dataloader,
                         test_dataloader,
                         parameters,
                         models_directory=models_directory,
-                        suffix=suffix)
+                        suffix=suffix,
+                        logger=train_logger)
+                
                 elif command == 'eval':
                     assert len(sys.argv) >= 3
                     model_suffix = sys.argv[2]
+                    log_file = log_dir + 'testing_task_' + str(task['pref_id']) + '.txt'
+                    test_logger = logger(log_file, task)
                     train_dataloader, val_dataloader, test_dataloader = train.load_datasets(
-                        X_train, y_train, X_val, y_val, parameters, X_test=X_test, y_test=y_test)
+                        X_train, y_train, X_val, y_val, parameters, X_test, y_test, test_logger)
                     evaluate.evaluate(
                         model_suffix, test_dataloader, parameters, models_directory)
                 else:
