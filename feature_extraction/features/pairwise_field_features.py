@@ -29,7 +29,7 @@ general_pairwise_features_list = [
 ]
 
 qq_pairwise_features_list = [
-    {'name': 'correlation_value', 'type': 'numeric'},
+    {'name': 'correlation_value', 'type': 'numeric'},           # The Pearson correlation coefficient measures the linear relationship between two datasets
     {'name': 'correlation_p', 'type': 'numeric'},
     {'name': 'correlation_significant_005', 'type': 'boolean'},
     {'name': 'ks_statistic', 'type': 'numeric'},
@@ -40,18 +40,18 @@ qq_pairwise_features_list = [
 ]
 
 cc_pairwise_features_list = [
-    {'name': 'chi_sq_statistic', 'type': 'numeric'},
-    {'name': 'chi_sq_p', 'type': 'numeric'},
-    {'name': 'chi_sq_significant_005', 'type': 'numeric'},
+    {'name': 'chi_sq_statistic', 'type': 'numeric'},        # 统计两个维度各种组合的组合数，进行卡方检验
+    {'name': 'chi_sq_p', 'type': 'numeric'},                # 卡方检验用于判断样本分布与期望分布是否有显著差异，或者判断分类变量间是否相互关联或彼此独立，此处用列联表，属后者
+    {'name': 'chi_sq_significant_005', 'type': 'numeric'},  # 若p值<0.05，拒绝原假说（两维度互相独立），证明两维度相互关联
     {'name': 'is_nested', 'type': 'boolean'}, 
-    {'name': 'nestedness', 'type': 'numeric'}, 
+    {'name': 'nestedness', 'type': 'numeric'},      # 两个维度的镶嵌程度，即一个为另一个的子分类的程度
     {'name': 'nestedness_95', 'type': 'boolean'}, 
 ]
 
-cq_pairwise_features_list = [
-    {'name': 'one_way_anova_statistic', 'type': 'numeric'},
-    {'name': 'one_way_anova_p', 'type': 'numeric'},  
-    {'name': 'one_way_anova_significant_005', 'type': 'boolean'},
+cq_pairwise_features_list = [                                       # The one-way ANOVA tests the null hypothesis that
+    {'name': 'one_way_anova_statistic', 'type': 'numeric'},         # two or more groups have the same population mean
+    {'name': 'one_way_anova_p', 'type': 'numeric'},                 # 先把q维度的数值按c维度分组，测试每组均值是否相同（要求每组方差相同）
+    {'name': 'one_way_anova_significant_005', 'type': 'boolean'},   # 若p值<0.05，拒绝原假说（各组均值相同），即至少有两组的均值不同
 ]
 
 name_pairwise_features_list = [
@@ -124,7 +124,7 @@ def get_statistical_pairwise_features(a, b, MAX_GROUPS=50):
         if len(get_unique(a_data)) > MAX_GROUPS or len(get_unique(a_data)) > MAX_GROUPS:
             return r
         df = pd.DataFrame({ a_name: a_data, b_name: b_data })
-        ct = pd.crosstab(a_data, b_data)
+        ct = pd.crosstab(a_data, b_data)    # 交叉表，统计分组频率
         chi2_statistic, chi2_p, dof, exp_frequencies = chi2_contingency(ct)
 
         nestedness_values = []
@@ -152,7 +152,7 @@ def get_statistical_pairwise_features(a, b, MAX_GROUPS=50):
         unique_c_field_values = get_unique(c_field['data'])
         if len(unique_c_field_values) <= MAX_GROUPS:
             df = pd.DataFrame({ a_name: a_data, b_name: b_data })
-            group_values = [ df[df[c_field['name']] == v][q_field['name']] for v in unique_c_field_values ]
+            group_values = [ df[df[c_field['name']] == v][q_field['name']] for v in unique_c_field_values ] # 按c维度分组
             anova_result = f_oneway(*group_values)  
 
             r['one_way_anova_statistic'] = anova_result.statistic

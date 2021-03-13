@@ -22,23 +22,27 @@ sys.path.insert(0, '..')
 from helpers.processing import *
 from helpers.analysis import *
 
+from logger import logger
+log_dir = './logs/'
 
 
 RANDOM_STATE = 42
 
 
 # features_directory = '../features/processed'
-features_directory = '../features/raw_1k'
+features_directory = '../features/features_20180520-005740_processed_99_standard'
+# features_directory = '../features/raw_1k'
+# features_directory = '../features/raw'
 
 suffix = '_one-per-user'
-models_directory = './models{}'.format(suffix)
-saves_directory = './saves{}'.format(suffix)
+models_directory = './models{}/'.format(suffix)
+saves_directory = './saves{}/'.format(suffix)
 for d in [models_directory, saves_directory]:
     if not os.path.exists(d):
         os.makedirs(d)
 
 feature_set_lookup_file_name = 'feature_names_by_type.pkl'
-num_datapoints = 10  # None # None if you want all
+num_datapoints = None # None if you want all
 
 
 # this script runs the same tasks as in the VizML Results paper
@@ -1811,8 +1815,9 @@ field_indices = [
 ]
 
 
-def format_outcomes_df(outcomes_df, outcome_variable_name,
-                       outcomes, id_field='fid'):
+def format_outcomes_df(load_logger, outcomes_df, outcome_variable_name, outcomes, id_field='fid'):
+    load_logger.log('outcome_variable_name: ' + outcome_variable_name)
+    load_logger.log('outcomes: ' + str(outcomes))
     outcomes_df[outcome_variable_name].fillna(value=False, inplace=True)
     if outcomes:
         outcomes_df = outcomes_df[outcomes_df[outcome_variable_name].isin(
@@ -1822,6 +1827,10 @@ def format_outcomes_df(outcomes_df, outcome_variable_name,
 
 
 def load_features(task):
+
+    log_file = log_dir + 'loading_task_' + str(task['pref_id']) + '.txt'
+    load_logger = logger(log_file, task)
+
     dataset_prediction_task_to_outcomes = {
         'all_one_trace_type': {
             'two': ['line', 'bar'],
@@ -1871,53 +1880,55 @@ def load_features(task):
         task['id_field'] = 'field_id'
         prediction_task_to_outcomes = field_prediction_task_to_outcomes
 
+
     features_df = pd.read_csv(
-        join(
-            features_directory,
-            task['features_df_file_name']),
+        join(features_directory, task['features_df_file_name']),
         nrows=num_datapoints)
     outcomes_df = pd.read_csv(
-        join(
-            features_directory,
-            task['outcomes_df_file_name']),
+        join(features_directory, task['outcomes_df_file_name']),
         nrows=num_datapoints)
     feature_names_by_type = pickle.load(
         open(
-            join(
-                features_directory,
-                feature_set_lookup_file_name),
+            join(features_directory, feature_set_lookup_file_name),
             'rb'))
 
-    print(features_df)
-    print('Initial Features:', features_df.shape)
-    print('Initial Outcomes:', outcomes_df.shape)
+    # print(features_df)
+    # print('Initial Features:', features_df.shape)
+    # print('Initial Outcomes:', outcomes_df.shape)
+    # load_logger.log_dict(feature_names_by_type)
+    # load_logger.log('\n')
+    # load_logger.log(features_df)
+    load_logger.log('Initial Features: ' + str(features_df.shape))
+    load_logger.log('Initial Outcomes: ' + str(outcomes_df.shape))
 
     if task['dataset'] == 'field':
         def is_x_or_y(is_xsrc, is_ysrc):
-            if is_xsrc and pd.isnull(is_ysrc):
-                return 'x'
-            if is_ysrc and pd.isnull(is_xsrc):
-                return 'y'
-            else:
-                return None
-
-        outcomes_df['is_x_or_y'] = np.vectorize(is_x_or_y)(
-            outcomes_df['is_xsrc'], outcomes_df['is_ysrc'])
+            if is_xsrc and pd.isnull(is_ysrc): return 'x'
+            if is_ysrc and pd.isnull(is_xsrc): return 'y'
+            else:                              return None
+        outcomes_df['is_x_or_y'] = np.vectorize(is_x_or_y)(outcomes_df['is_xsrc'], outcomes_df['is_ysrc'])
         outcomes_df['is_single_src'] = outcomes_df['is_single_xsrc'] | outcomes_df['is_single_ysrc']
 
-    outcomes_df_subset = format_outcomes_df(outcomes_df, task['outcome_variable_name'],
-                                            prediction_task_to_outcomes[task['outcome_variable_name']
-                                                                        ][task['prediction_task']],
+    outcomes_df_subset = format_outcomes_df(load_logger, outcomes_df, 
+                                            task['outcome_variable_name'],
+                                            prediction_task_to_outcomes[ task['outcome_variable_name'] ] [task['prediction_task'] ],
                                             id_field=task['id_field'])
-    final_df = join_features_and_outcomes(
-        features_df, outcomes_df_subset, on=task['id_field'])
+    
+    final_df = join_features_and_outcomes(features_df, outcomes_df_subset, on=task['id_field'])
     last_index = final_df.columns.get_loc(task['outcome_variable_name'])
+
     X = final_df.iloc[:, :last_index]
     y = final_df.iloc[:, last_index]
-    print('Intermediate Outcomes:', y.shape)
-    value_counts = y.value_counts()
-    print('Value counts:')
-    print(value_counts)
+
+    # print('Intermediate Outcomes:', y.shape)
+    # value_counts = y.value_counts()
+    # print('Value counts:')
+    # print(value_counts)
+    load_logger.log('Final DF Shape: ' + str(final_df.shape))
+    load_logger.log('Last Index: ' + str(last_index))
+
+    load_logger.log('Intermediate Outcomes: ' + str(y.shape))
+    load_logger.log('Value counts: \n' + str(y.value_counts()))
 
     # delete variables to save memory!
     del final_df, outcomes_df
@@ -1929,9 +1940,12 @@ def load_features(task):
             task_type=task['dataset'],
             feature_set=task_name)
         indices = [X.columns.get_loc(c) for c in names if c in X.columns]
-        print('task is ' + task_name + ' and indices are:')
+        # print('task is ' + task_name + ' and indices are:')
         #print('names are {}'.format(names) )
         # print(indices)
+        # load_logger.log('task is ' + task_name + ' and indices are: ')
+        # load_logger.log(indices)
+
 
     y = pd.get_dummies(y).values.argmax(1)
 
@@ -1959,8 +1973,16 @@ def load_features(task):
     else:
         X, y = X.values.astype(np.float64), y
 
-    print('Final Features:', X.shape)
-    print('Final Outcomes:', y.shape)
+    # print('Final Features:', X.shape)
+    # print('Final Outcomes:', y.shape)
+    load_logger.log('Final Features:' + str(X.shape))
+    load_logger.log('Final Outcomes:' + str(y.shape))
+    unique, counts = np.unique(y, return_counts=True)
+    load_logger.log('Value counts after sampling:')
+    load_logger.log_dict(dict(zip(unique, counts)))
+    load_logger.log('\n')
+
+    del load_logger
     return util.unison_shuffle(X, y)
 
 
@@ -1981,9 +2003,9 @@ def main():
              {'outcome_variable_name': 'has_single_src', 'prediction_task': 'two',
               'sampling_mode': 'over', 'pref_id': 4, 'dataset': 'dataset'},
              {'outcome_variable_name': 'num_x_axes', 'prediction_task': 'numeric',
-              'sampling_mode': 10000, 'pref_id': 5, 'dataset': 'dataset'},
+              'sampling_mode': 'over', 'pref_id': 5, 'dataset': 'dataset'},         #10000
              {'outcome_variable_name': 'num_y_axes', 'prediction_task': 'numeric',
-              'sampling_mode': 10000, 'pref_id': 6, 'dataset': 'dataset'},
+              'sampling_mode': 'over', 'pref_id': 6, 'dataset': 'dataset'},          #10000
              {'outcome_variable_name': 'trace_type', 'prediction_task': 'two',
               'sampling_mode': 'over', 'pref_id': 7, 'dataset': 'field'},
              {'outcome_variable_name': 'trace_type', 'prediction_task': 'three',
@@ -1996,7 +2018,7 @@ def main():
               'sampling_mode': 'over', 'pref_id': 11, 'dataset': 'field'},
              ]
 
-    for i in [1, 11]:  # range(7, len(tasks)):
+    for i in [6]: #range(2, 12):  # range(7, len(tasks)):
         task = tasks[i]
         model_prefix = 'paper_' + task['dataset'] + '_' + str(task['pref_id'])
 
@@ -2017,13 +2039,13 @@ def main():
             # for constructing learning curves
             'dataset_ratios': [0.01, 0.1, 0.5, 1.0],
             'test_best': True,
-            'use_cuda': False
+            'use_cuda': True
         }
 
         if parameters['use_cuda'] == True: 
-            os.environ["CUDA_VISIBLE_DEVICES"] = '6'
+            os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-        for feature_set in [0, 1, 2, 3]:  # range(0, 4): # dimensions, types, values, names
+        for feature_set in [3]:  #[0, 1, 2, 3]:  # range(0, 4): # dimensions, types, values, names
             assert len(sys.argv) >= 2,          'You must specify a command LOAD, TRAIN, or EVAL'
             assert(parameters['model_prefix']), 'You must specify a prefix for the model name'
             if 'test_best' in parameters and parameters['test_best']:
@@ -2052,22 +2074,28 @@ def main():
                       str(task['pref_id']) + ',' + str(feature_set) + ')')
 
                 if command == 'train':
+                    log_file = log_dir + 'training_task_' + str(task['pref_id']) + '.txt'
+                    train_logger = logger(log_file, task)
                     train_dataloader, val_dataloader, test_dataloader = train.load_datasets(
-                        X_train, y_train, X_val, y_val, parameters, X_test=X_test, y_test=y_test)
+                        X_train, y_train, X_val, y_val, parameters, X_test, y_test, train_logger)
                     train.train(
                         train_dataloader,
                         val_dataloader,
                         test_dataloader,
                         parameters,
                         models_directory=models_directory,
-                        suffix=suffix)
+                        suffix=suffix,
+                        logger=train_logger)
+                
                 elif command == 'eval':
                     assert len(sys.argv) >= 3
                     model_suffix = sys.argv[2]
+                    log_file = log_dir + 'testing_task_' + str(task['pref_id']) + '.txt'
+                    test_logger = logger(log_file, task)
                     train_dataloader, val_dataloader, test_dataloader = train.load_datasets(
-                        X_train, y_train, X_val, y_val, parameters, X_test=X_test, y_test=y_test)
+                        X_train, y_train, X_val, y_val, parameters, X_test, y_test, test_logger)
                     evaluate.evaluate(
-                        model_suffix, test_dataloader, parameters)
+                        model_suffix, test_dataloader, parameters, models_directory)
                 else:
                     assert False, 'The command must either be LOAD, TRAIN, or EVAL'
 
