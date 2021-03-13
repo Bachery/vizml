@@ -2,17 +2,18 @@
 import ml.evaluate as evaluate
 import ml.util as util
 import ml.train as train
+from ml import nets
 from logger import logger
 # paper tasks variables and fucntions
-from paper_tasks import dataset_indices, field_indices
 import paper_tasks
 # packages
-from tqdm import tqdm
+# from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import datetime
 import argparse
 import pickle
+import torch
 import os
 import sys
 from os.path import join
@@ -24,8 +25,8 @@ from helpers.analysis import *
 '''
 Hyper parameters
 '''
-# features_directory	= '../features/features_20180520-005740_processed_99_standard'
-features_directory	= '../features/raw_1k'
+features_directory	= '../features/features_20180520-005740_processed_99_standard'
+# features_directory	= '../features/raw_1k'
 models_directory	= './models_full/'
 saves_directory		= './saves_with_ids'
 log_dir				= './logs/'
@@ -39,11 +40,11 @@ model_prf_for_tasks	= {
 	'4':	'paper_dataset_4',
 	'5':	'save_task_5_sample10000',
 	'6':	'save_task_6_sample10000',
-	'7':	'paper_filed_7',
-	'8':	'paper_filed_8',
-	'9':	'paper_filed_9',
-	'10':	'paper_filed_10',
-	'11':	'paper_filed_11',
+	'7':	'paper_field_7',
+	'8':	'paper_field_8',
+	'9':	'paper_field_9',
+	'10':	'paper_field_10',
+	'11':	'paper_field_11',
 }
 model_suf_for_tasks	= {
 	'1':	'39',
@@ -115,7 +116,7 @@ def parse_args():
 	# Note
 	parser.add_argument('--note',			type=str,	default=None,	help='')
 	# Tasks to use
-	parser.add_argument('--tasks',			type=int,	default=[1],	nargs='+',
+	parser.add_argument('--tasks',			type=int,	default=[10],	nargs='+',
 																		help='')
 
 	return vars(parser.parse_args())
@@ -268,6 +269,7 @@ def load_features_for_all_tasks():
 	log_file = log_dir + 'loading_all_tasks_to_save_fid.txt'
 	load_logger = logger(log_file, {'MISSION': 'Save fid for all tasks'})
 	for task_id in range(1, 12):
+		load_logger.log('----------- TASK ' + str(task_id) + '-----------')
 		task = tasks[task_id]
 		prefix = 'task_' + str(task_id)
 		X, y = load_features_and_save_id(task, load_logger)
@@ -278,8 +280,49 @@ def load_features_for_all_tasks():
 '''
 Evaluation of multiple tasks
 '''
-def evaluate_and_save_results():
-	pass
+def evaluate_and_save_results(dataloader, parameters):
+	batch_size = parameters.get('batch_size', 100)
+	hidden_sizes = parameters.get('hidden_sizes', 200)
+	input_dim = parameters.get('input_dim')
+	output_dim = parameters.get('output_dim')
+	model_prefix = parameters.get('model_prefix', None)
+	model_suffix = parameters.get('model_suffix', None)
+	use_cuda = parameters.get('use_cuda')
+
+	# load network
+	criterion = torch.nn.CrossEntropyLoss()
+	net = nets.AdvancedNet(input_dim, hidden_sizes, output_dim)
+	if use_cuda:
+		criterion = criterion.cuda()
+		net = net.cuda()
+		net.load_state_dict(
+			torch.load(models_directory + model_prefix + '.' + model_suffix))
+	else:
+		net.load_state_dict(
+			torch.load(models_directory + model_prefix + '.' + model_suffix, 
+			map_location=torch.device('cpu')))
+		
+
+	# evaluating
+	num_batches = len(dataloader)
+	total_loss = 0.0
+	accuracy = 0.0
+	net.eval()
+	for inputs, labels in dataloader:
+		if use_cuda: inputs, labels = inputs.cuda(), labels.cuda()
+		net = net.double()  # to fix error: RuntimeError: expected scalar type Float but found Double
+		outputs = net(inputs)
+		if criterion is not None:
+			total_loss += criterion(outputs, labels).item()
+		max_index = outputs.max(dim=1)[1]
+		accuracy += np.sum( max_index.data.cpu().numpy() == labels.data.cpu().numpy() ) \
+							/ inputs.size()[0]
+
+	net.train()
+	accuracy = accuracy / num_batches
+	total_loss = total_loss / num_batches
+	return accuracy, total_loss
+
 
 
 def eval_multi_tasks(parameters):
@@ -298,34 +341,37 @@ def eval_multi_tasks(parameters):
 	# evaluate each task
 	for task_id in parameters['tasks']:
 		task = tasks[task_id]
-		data_prefix = 'paper_' + task['dataset'] + '_' + str(task['pref_id'])
+		data_prefix = 'task_' + str(task_id)
 		parameters['logger'].log_dict(task)
 		parameters['logger'].log('dataset prefix: ' + data_prefix)
 		# Dataset
 		X_train, y_train, X_val, y_val, X_test, y_test = util.load_matrices_from_disk(
 			saves_directory, data_prefix, num_datapoints)
+		dataset_indices = [i+1 for i in paper_tasks.dataset_indices[feature_set]]
+		field_indices	= [i+2 for i in paper_tasks.field_indices[feature_set]]
 		if task['dataset'] == 'dataset':
-			X_train	= X_train	[:, dataset_indices[feature_set]]
-			X_val	= X_val		[:, dataset_indices[feature_set]]
-			X_test	= X_test	[:, dataset_indices[feature_set]]
+			X_train	= X_train	[:, dataset_indices]
+			X_val	= X_val		[:, dataset_indices]
+			X_test	= X_test	[:, dataset_indices]
 		else:
 			assert task['dataset'] == 'field'
-			X_train	= X_train	[:, field_indices[feature_set]]
-			X_val	= X_val		[:, field_indices[feature_set]]
-			X_test	= X_test	[:, field_indices[feature_set]]
-		parameters['logger'].log('loaded test size: ' + str(X_teset.shape))
+			X_train	= X_train	[:, field_indices]
+			X_val	= X_val		[:, field_indices]
+			X_test	= X_test	[:, field_indices]
+		parameters['logger'].log('loaded test X size: ' + str(X_test.shape))
+		parameters['logger'].log('loaded test y size: ' + str(y_test.shape))
 		_, _, test_dataloader = train.load_datasets(
 				X_train, y_train, X_val, y_val, parameters, X_test, y_test, parameters['logger'])
 		# model
 		parameters['model_prefix'] = model_prf_for_tasks[str(task_id)]
 		parameters['model_suffix'] = model_suf_for_tasks[str(task_id)]
 		# eval
-		evaluate.evaluate(
-            parameters['model_suffix'], test_dataloader, parameters, models_directory)
+		evaluate_and_save_results(test_dataloader, parameters)
+
 
 
 if __name__ == '__main__':
-	# parameters = parse_args()
-	# print(parameters)
+	parameters = parse_args()
+	eval_multi_tasks(parameters)
 	
-	load_features_for_all_tasks()
+	# load_features_for_all_tasks()

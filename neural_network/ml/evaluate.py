@@ -23,12 +23,11 @@ def evaluate(model_suffix, dataloader, parameters,
     if use_cuda:
         criterion = criterion.cuda()
         net = net.cuda()
+        net.load_state_dict(
+            torch.load( models_directory + model_prefix + '.' + model_suffix ) )
     net.load_state_dict(
-        torch.load(
-            models_directory +
-            model_prefix +
-            '.' +
-            model_suffix))
+            torch.load( models_directory + model_prefix + '.' + model_suffix,
+            map_location=torch.device('cpu') ) )
 
     accuracy, total_loss = eval_error(net, dataloader, criterion, use_cuda)
     print('Test acc: %.4f, loss: %.4f' % (accuracy, total_loss))

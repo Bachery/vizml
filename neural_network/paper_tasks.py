@@ -1664,7 +1664,7 @@ dataset_indices = [
 ]
 
 field_indices = [
-    [1],
+    [1], # 第一个是exits，跳过
     [1, 2, 3, 4, 5, 6, 7, 8],
     [1,
      2,
@@ -2018,7 +2018,7 @@ def main():
               'sampling_mode': 'over', 'pref_id': 11, 'dataset': 'field'},
              ]
 
-    for i in range(1,12): #range(2, 12):  # range(7, len(tasks)):
+    for i in [1]: #range(2, 12):  # range(7, len(tasks)):
         task = tasks[i]
         model_prefix = 'paper_' + task['dataset'] + '_' + str(task['pref_id'])
 
@@ -2039,7 +2039,7 @@ def main():
             # for constructing learning curves
             'dataset_ratios': [0.01, 0.1, 0.5, 1.0],
             'test_best': True,
-            'use_cuda': True
+            'use_cuda': False
         }
 
         if parameters['use_cuda'] == True: 
