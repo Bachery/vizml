@@ -27,7 +27,8 @@ from helpers.analysis import *
 RANDOM_STATE = 42
 
 
-features_directory = '../features/processed'
+# features_directory = '../features/processed'
+features_directory = '../features/raw_1k'
 
 suffix = '_one-per-user'
 models_directory = './models{}'.format(suffix)
@@ -2020,7 +2021,7 @@ def main():
         }
 
         if parameters['use_cuda'] == True: 
-            os.environ["CUDA_VISIBLE_DEVICES"] = 6
+            os.environ["CUDA_VISIBLE_DEVICES"] = '6'
 
         for feature_set in [0, 1, 2, 3]:  # range(0, 4): # dimensions, types, values, names
             assert len(sys.argv) >= 2,          'You must specify a command LOAD, TRAIN, or EVAL'

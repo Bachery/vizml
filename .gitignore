@@ -111,7 +111,9 @@ venv.bak/
 data/*
 datasets/*
 features/*
-neural_network/saves/*
+neural_network/saves*
 
 # results
 models/*
+neural_network/models*
+neural_network/*.txt
