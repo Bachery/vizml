@@ -30,8 +30,8 @@ RANDOM_STATE = 42
 
 
 # features_directory = '../features/processed'
-features_directory = '../features/features_20180520-005740_processed_99_standard'
-# features_directory = '../features/raw_1k'
+# features_directory = '../features/features_20180520-005740_processed_99_standard'
+features_directory = '../features/raw_1k'
 # features_directory = '../features/raw'
 
 suffix = '_one-per-user'
@@ -2003,9 +2003,9 @@ def main():
              {'outcome_variable_name': 'has_single_src', 'prediction_task': 'two',
               'sampling_mode': 'over', 'pref_id': 4, 'dataset': 'dataset'},
              {'outcome_variable_name': 'num_x_axes', 'prediction_task': 'numeric',
-              'sampling_mode': 'over', 'pref_id': 5, 'dataset': 'dataset'},         #10000
+              'sampling_mode': 100, 'pref_id': 5, 'dataset': 'dataset'},         #10000
              {'outcome_variable_name': 'num_y_axes', 'prediction_task': 'numeric',
-              'sampling_mode': 'over', 'pref_id': 6, 'dataset': 'dataset'},          #10000
+              'sampling_mode': 100, 'pref_id': 6, 'dataset': 'dataset'},          #10000
              {'outcome_variable_name': 'trace_type', 'prediction_task': 'two',
               'sampling_mode': 'over', 'pref_id': 7, 'dataset': 'field'},
              {'outcome_variable_name': 'trace_type', 'prediction_task': 'three',
@@ -2018,7 +2018,7 @@ def main():
               'sampling_mode': 'over', 'pref_id': 11, 'dataset': 'field'},
              ]
 
-    for i in [6]: #range(2, 12):  # range(7, len(tasks)):
+    for i in range(1,12): #range(2, 12):  # range(7, len(tasks)):
         task = tasks[i]
         model_prefix = 'paper_' + task['dataset'] + '_' + str(task['pref_id'])
 
