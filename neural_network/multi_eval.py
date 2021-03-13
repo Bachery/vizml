@@ -116,7 +116,7 @@ def parse_args():
 	# Note
 	parser.add_argument('--note',			type=str,	default=None,	help='')
 	# Tasks to use
-	parser.add_argument('--tasks',			type=int,	default=[10],	nargs='+',
+	parser.add_argument('--tasks',			type=int,	default=[1],	nargs='+',
 																		help='')
 
 	return vars(parser.parse_args())
@@ -280,7 +280,7 @@ def load_features_for_all_tasks():
 '''
 Evaluation of multiple tasks
 '''
-def evaluate_and_save_results(dataloader, parameters):
+def evaluate_and_get_results(dataloader, parameters):
 	batch_size = parameters.get('batch_size', 100)
 	hidden_sizes = parameters.get('hidden_sizes', 200)
 	input_dim = parameters.get('input_dim')
@@ -301,13 +301,14 @@ def evaluate_and_save_results(dataloader, parameters):
 		net.load_state_dict(
 			torch.load(models_directory + model_prefix + '.' + model_suffix, 
 			map_location=torch.device('cpu')))
-		
 
 	# evaluating
 	num_batches = len(dataloader)
 	total_loss = 0.0
 	accuracy = 0.0
 	net.eval()
+	results = np.zeros(parameters['data_num'])
+	pos = 0
 	for inputs, labels in dataloader:
 		if use_cuda: inputs, labels = inputs.cuda(), labels.cuda()
 		net = net.double()  # to fix error: RuntimeError: expected scalar type Float but found Double
@@ -315,14 +316,43 @@ def evaluate_and_save_results(dataloader, parameters):
 		if criterion is not None:
 			total_loss += criterion(outputs, labels).item()
 		max_index = outputs.max(dim=1)[1]
-		accuracy += np.sum( max_index.data.cpu().numpy() == labels.data.cpu().numpy() ) \
+		result = max_index.data.cpu().numpy()
+		accuracy += np.sum( result == labels.data.cpu().numpy() ) \
 							/ inputs.size()[0]
+		results[pos:pos+len(max_index)] = result
+		pos = pos + len(max_index)
 
 	net.train()
 	accuracy = accuracy / num_batches
 	total_loss = total_loss / num_batches
-	return accuracy, total_loss
+	parameters['logger'].log('accuracy: ' + str(accuracy))
+	parameters['logger'].log('total loss: ' + str(total_loss))
+	return accuracy, total_loss, results
 
+
+# modified from neural_network.ml.train.load_datasets
+def load_test_datasets(parameters, X_test, y_test):
+	batch_size = parameters.get('batch_size', 200)
+	print_test = parameters.get('print_test', False) and (X_test is not None)
+
+	# calculate input and output dim
+	unique, counts = np.unique(y_test, return_counts=True)
+	parameters['data_num']	= X_test.shape[0]
+	parameters['input_dim'] = X_test.shape[1]
+	parameters['output_dim'] = len(unique)
+
+	parameters['logger'].log('output_dim is: ' + str(len(unique)))
+	parameters['logger'].log_dict(dict(zip(unique, counts)))
+	parameters['logger'].log('X_test  shape: ' + str(X_test.shape))
+	parameters['logger'].log('y_test  shape: ' + str(y_test.shape))
+
+	X_test = torch.from_numpy(X_test.astype(float))
+	y_test = torch.from_numpy(y_test)
+	test_dataset = torch.utils.data.TensorDataset(X_test, y_test)
+	test_dataloader = torch.utils.data.DataLoader(
+		test_dataset, shuffle=True, batch_size=batch_size, num_workers=0)
+
+	return test_dataloader
 
 
 def eval_multi_tasks(parameters):
@@ -341,33 +371,37 @@ def eval_multi_tasks(parameters):
 	# evaluate each task
 	for task_id in parameters['tasks']:
 		task = tasks[task_id]
-		data_prefix = 'task_' + str(task_id)
+		data_prefix = '/task_' + str(task_id)
 		parameters['logger'].log_dict(task)
 		parameters['logger'].log('dataset prefix: ' + data_prefix)
 		# Dataset
-		X_train, y_train, X_val, y_val, X_test, y_test = util.load_matrices_from_disk(
-			saves_directory, data_prefix, num_datapoints)
+		# X_train, y_train, X_val, y_val, X_test, y_test = util.load_matrices_from_disk(
+		# 	saves_directory, data_prefix, num_datapoints)
+		X_test = np.load(saves_directory + data_prefix + '_X_test_' + \
+						str(num_datapoints) + '.npy', allow_pickle=True)
+		y_test = np.load(saves_directory + data_prefix + '_y_test_' + \
+						str(num_datapoints) + '.npy', allow_pickle=True)
 		dataset_indices = [i+1 for i in paper_tasks.dataset_indices[feature_set]]
 		field_indices	= [i+2 for i in paper_tasks.field_indices[feature_set]]
 		if task['dataset'] == 'dataset':
-			X_train	= X_train	[:, dataset_indices]
-			X_val	= X_val		[:, dataset_indices]
+			# X_train	= X_train	[:, dataset_indices]
+			# X_val	= X_val		[:, dataset_indices]
 			X_test	= X_test	[:, dataset_indices]
 		else:
 			assert task['dataset'] == 'field'
-			X_train	= X_train	[:, field_indices]
-			X_val	= X_val		[:, field_indices]
+			# X_train	= X_train	[:, field_indices]
+			# X_val	= X_val		[:, field_indices]
 			X_test	= X_test	[:, field_indices]
 		parameters['logger'].log('loaded test X size: ' + str(X_test.shape))
 		parameters['logger'].log('loaded test y size: ' + str(y_test.shape))
-		_, _, test_dataloader = train.load_datasets(
-				X_train, y_train, X_val, y_val, parameters, X_test, y_test, parameters['logger'])
+		test_dataloader = load_test_datasets(parameters, X_test, y_test)
 		# model
 		parameters['model_prefix'] = model_prf_for_tasks[str(task_id)]
 		parameters['model_suffix'] = model_suf_for_tasks[str(task_id)]
 		# eval
-		evaluate_and_save_results(test_dataloader, parameters)
-
+		_, _, results = evaluate_and_get_results(test_dataloader, parameters)
+		np.savetxt(saves_directory + data_prefix + '_y_rslts_' + \
+						str(num_datapoints) + '.txt', results)
 
 
 if __name__ == '__main__':
