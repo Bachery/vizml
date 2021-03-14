@@ -25,10 +25,10 @@ from helpers.analysis import *
 '''
 Hyper parameters
 '''
-features_directory	= '../features/features_20180520-005740_processed_99_standard'
-# features_directory	= '../features/raw_1k'
+# features_directory	= '../features/features_20180520-005740_processed_99_standard'
+features_directory	= '../features/raw_1k/'
 models_directory	= './models_full/'
-saves_directory		= './saves_with_ids'
+saves_directory		= './saves_1k_all_test/'	#'./saves_with_ids/'
 log_dir				= './logs/'
 feature_set			= 3
 RANDOM_STATE 		= 42
@@ -211,7 +211,7 @@ def load_features_and_save_id(task, logger):
 							task['outcome_variable_name'],
 							prediction_task_to_outcomes[ task['outcome_variable_name'] ] [task['prediction_task'] ],
 							id_field=task['id_field'])
- 
+
 	# join features and outcomes by the fid/field_id
 	final_df = join_data_and_keep_id(features_df, outcomes_df_subset, on=task['id_field'])
 	last_index = final_df.columns.get_loc(task['outcome_variable_name'])
@@ -251,7 +251,8 @@ def load_features_and_save_id(task, logger):
 		X = np.concatenate(X_resampled_arrays)	#.astype(np.float64)
 		y = np.concatenate(y_resampled_arrays)
 	else:
-		X, y = X.values.astype(np.float64), y
+		# X, y = X.values.astype(np.float64), y
+		pass
 
 	logger.log('Final Features:' + str(X.shape))
 	logger.log('Final Outcomes:' + str(y.shape))
@@ -275,6 +276,22 @@ def load_features_for_all_tasks():
 		X, y = load_features_and_save_id(task, load_logger)
 		util.save_matrices_to_disk(
 			X, y, [0.2, 0.2], saves_directory, prefix, num_datapoints)
+
+
+def load_features_1k_all_as_test():
+	log_file = log_dir + 'loading_all_1k_as_test_for_all_task.txt'
+	load_logger = logger(log_file, {'MISSION': 'Save all 1k for testing'})
+	global features_directory
+	features_directory = '../features/raw_1k'
+	saves_dir = './saves_1k_all_test/'
+	for task_id in range(1, 12):
+		load_logger.log('----------- TASK ' + str(task_id) + '-----------')
+		task = tasks[task_id]
+		prefix = '1k_task_' + str(task_id)
+		X, y = load_features_and_save_id(task, load_logger)
+		np.save(saves_dir + prefix + '_X_test_' + str(num_datapoints) + '.npy', X)
+		np.save(saves_dir + prefix + '_y_test_' + str(num_datapoints) + '.npy', y)
+
 
 
 '''
@@ -371,7 +388,8 @@ def eval_multi_tasks(parameters):
 	# evaluate each task
 	for task_id in parameters['tasks']:
 		task = tasks[task_id]
-		data_prefix = '/task_' + str(task_id)
+		# data_prefix = 'task_' + str(task_id)
+		data_prefix = '1k_task_' + str(task_id)
 		parameters['logger'].log_dict(task)
 		parameters['logger'].log('dataset prefix: ' + data_prefix)
 		# Dataset
@@ -400,8 +418,9 @@ def eval_multi_tasks(parameters):
 		parameters['model_suffix'] = model_suf_for_tasks[str(task_id)]
 		# eval
 		_, _, results = evaluate_and_get_results(test_dataloader, parameters)
-		np.savetxt(saves_directory + data_prefix + '_y_rslts_' + \
+		np.savetxt(saves_directory + data_prefix + '_y_results_' + \
 						str(num_datapoints) + '.txt', results)
+		parameters['logger'].log('Saved results: ' + str(results.shape) + '\n')
 
 
 if __name__ == '__main__':
@@ -409,3 +428,4 @@ if __name__ == '__main__':
 	eval_multi_tasks(parameters)
 	
 	# load_features_for_all_tasks()
+	# load_features_1k_all_as_test()
