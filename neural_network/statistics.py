@@ -79,6 +79,7 @@ def statistic():
 	print(dataset_df['fid'])
 	print(field_df['fid'].value_counts())
 
+
 def save_feature_names():
 	dataset_features_df = pd.read_csv(
 		join(features_directory, 'features_aggregate_single_pairwise.csv'),
@@ -118,7 +119,24 @@ def load_feature_names():
 			np.load(features_directory + '/names_field_outcomes.npy', allow_pickle=True)]
 
 
+def compare_all_and_1k_features():
+	features_dir = '../features/features_20180520-005740_processed_99_standard'
+	all_field_features_df = pd.read_csv(
+		join(features_directory, 'field_level_features.csv'),
+		nrows=10)
+	all_field_features_names = [name for name in all_field_features_df.columns]
+
+	features_dir = '../features/raw_1k'
+	k_field_features_df = pd.read_csv(
+		join(features_directory, 'field_level_features.csv'),
+		nrows=10)
+	k_field_features_names = [name for name in k_field_features_df.columns]
+
+	print(all_field_features_names == k_field_features_names)
+
+
 if __name__ == '__main__':
 	# save_feature_names()
 	# load_testset(1)
-	statistic()
+	# statistic()
+	compare_all_and_1k_features()

@@ -28,7 +28,8 @@ Hyper parameters
 # features_directory	= '../features/features_20180520-005740_processed_99_standard'
 features_directory	= '../features/raw_1k/'
 models_directory	= './models_full/'
-saves_directory		= './saves_1k_all_test/'	#'./saves_with_ids/'
+# saves_directory		= './saves_with_ids/'	#'./saves_with_ids_1k/'
+saves_directory		= './saves_1k_all_test/'
 log_dir				= './logs/'
 feature_set			= 3
 RANDOM_STATE 		= 42
@@ -116,8 +117,8 @@ def parse_args():
 	# Note
 	parser.add_argument('--note',			type=str,	default=None,	help='')
 	# Tasks to use
-	parser.add_argument('--tasks',			type=int,	default=[1],	nargs='+',
-																		help='')
+	parser.add_argument('--tasks',			type=int,	default=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+														nargs='+',		help='')
 
 	return vars(parser.parse_args())
 
@@ -267,9 +268,10 @@ def load_features_and_save_id(task, logger):
 
 # calling load_features_and_save_id for each task
 def load_features_for_all_tasks():
-	log_file = log_dir + 'loading_all_tasks_to_save_fid.txt'
+	# log_file = log_dir + 'loading_all_tasks_to_save_fid.txt'
+	log_file = log_dir + 'loading_full_task_1_to_save_fid.txt'
 	load_logger = logger(log_file, {'MISSION': 'Save fid for all tasks'})
-	for task_id in range(1, 12):
+	for task_id in range(1, 2):
 		load_logger.log('----------- TASK ' + str(task_id) + '-----------')
 		task = tasks[task_id]
 		prefix = 'task_' + str(task_id)
@@ -282,15 +284,18 @@ def load_features_1k_all_as_test():
 	log_file = log_dir + 'loading_all_1k_as_test_for_all_task.txt'
 	load_logger = logger(log_file, {'MISSION': 'Save all 1k for testing'})
 	global features_directory
+	global tasks
 	features_directory = '../features/raw_1k'
 	saves_dir = './saves_1k_all_test/'
 	for task_id in range(1, 12):
 		load_logger.log('----------- TASK ' + str(task_id) + '-----------')
+		tasks[task_id]['sampling_mode'] = 'none'
 		task = tasks[task_id]
 		prefix = '1k_task_' + str(task_id)
 		X, y = load_features_and_save_id(task, load_logger)
 		np.save(saves_dir + prefix + '_X_test_' + str(num_datapoints) + '.npy', X)
 		np.save(saves_dir + prefix + '_y_test_' + str(num_datapoints) + '.npy', y)
+
 
 
 
@@ -307,6 +312,7 @@ def evaluate_and_get_results(dataloader, parameters):
 	use_cuda = parameters.get('use_cuda')
 
 	# load network
+	parameters['logger'].log('Loading trained model: ' + models_directory + model_prefix + '.' + model_suffix)
 	criterion = torch.nn.CrossEntropyLoss()
 	net = nets.AdvancedNet(input_dim, hidden_sizes, output_dim)
 	if use_cuda:
@@ -326,7 +332,10 @@ def evaluate_and_get_results(dataloader, parameters):
 	net.eval()
 	results = np.zeros(parameters['data_num'])
 	pos = 0
+	parameters['logger'].log('Start testing, batches num: ' + str(num_batches))
 	for inputs, labels in dataloader:
+		# 填充 nan
+		inputs = torch.where(torch.isnan(inputs), torch.full_like(inputs, 0), inputs)
 		if use_cuda: inputs, labels = inputs.cuda(), labels.cuda()
 		net = net.double()  # to fix error: RuntimeError: expected scalar type Float but found Double
 		outputs = net(inputs)
