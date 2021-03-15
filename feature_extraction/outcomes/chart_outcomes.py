@@ -30,6 +30,7 @@ outcome_properties = [
     'num_traces',
     'num_trace_types',
     'trace_types',
+    'fields_in_each_trace',         # 记录每个trace用的维度的id
 
     # Chart-level
     'is_all_one_trace_type',
@@ -76,6 +77,7 @@ def extract_chart_outcomes(chart_obj):
     x_axes = []
     y_axes = []
     axes = []
+    fields_in_each_trace = []
     # Parse Chart Data
     for d in chart_data:
         t = d.get('type')
@@ -85,10 +87,17 @@ def extract_chart_outcomes(chart_obj):
             num_traces += 1
             trace_types.append(t)
 
+        fields_for_this_trace = []
         xsrc = d.get('xsrc')
         ysrc = d.get('ysrc')
-        if xsrc: x_srcs.append(xsrc)
-        if ysrc: y_srcs.append(ysrc)
+        if xsrc: 
+            x_srcs.append(xsrc)
+            fields_for_this_trace.append(xsrc)
+        if ysrc: 
+            y_srcs.append(ysrc)
+            fields_for_this_trace.append(ysrc)
+        # 记录每个trace用的维度的id
+        fields_in_each_trace.append(fields_for_this_trace)
 
         if d.get('xaxis'):  x_axes.append(d.get('xaxis'))
         if d.get('yaxis'):  y_axes.append(d.get('yaxis'))
@@ -172,6 +181,7 @@ def extract_chart_outcomes(chart_obj):
     outcomes['trace_types'] = trace_types
     outcomes['is_all_one_trace_type'] = is_all_one_trace_type
     outcomes['all_one_trace_type'] = all_one_trace_type
+    outcomes['fields_in_each_trace'] = fields_in_each_trace     # 记录每个trace用的维度的id
 
     outcomes['num_fields_used_by_data'] = num_fields_used_by_data
 

@@ -118,3 +118,8 @@ models/*
 neural_network/models*/*
 neural_network/logs/*
 neural_network/*.txt
+
+# vis
+visualization/html/*
+visualization/logs/*
+visualization/saves/*

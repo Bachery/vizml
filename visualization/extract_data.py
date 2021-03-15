@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import datetime
-import h5py
+# import h5py
 import json
 import sys
 import os
@@ -54,9 +54,10 @@ class Extracter(object):
 			chart_outcomes = extract_chart_outcomes(chart_obj)
 			field_outcomes = extract_field_outcomes(chart_obj)
 			instance = Instance(fid, sorted_fields, chart_outcomes, field_outcomes)
-			save_file = self.save_folder + str(chart_num) + '_{0}_{1}.h5'.format(*fid.split(':'))
-			with h5py.File(save_file, 'w') as f:
-				f['instance'] = instance
+			# save_file = self.save_folder + str(chart_num) + '_{0}_{1}.h5'.format(*fid.split(':'))
+			# with h5py.File(save_file, 'w') as f:
+			# 	f['instance'] = instance
+			instance.to_single_html()
 
 
 	def main_process(self):
