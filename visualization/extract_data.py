@@ -9,12 +9,12 @@ import json
 import sys
 import os
 
-from instance import Instance
+# from instance import Instance
 sys.path.insert(0, '..')
 from neural_network.logger import logger
-from feature_extraction.general_helpers import clean_chunk
-from feature_extraction.outcomes.chart_outcomes import extract_chart_outcomes
-from feature_extraction.outcomes.field_encoding_outcomes import extract_field_outcomes
+# from feature_extraction.general_helpers import clean_chunk
+# from feature_extraction.outcomes.chart_outcomes import extract_chart_outcomes
+# from feature_extraction.outcomes.field_encoding_outcomes import extract_field_outcomes
 
 class Extracter(object):
 	def __init__(self, data_file, parallelize=True, chunk_size=1000):
@@ -25,10 +25,13 @@ class Extracter(object):
 		self.data_file		= data_file
 		self.parallelize	= parallelize
 		self.chunk_size		= chunk_size
+
 		self.save_folder	= './saves/'
 		self.MAX_FIELDS		= 25
 		self.first_batch	= True
-
+		self.dataset_feature_file = '../features/features_20180520-005740_processed_99_standard/features_aggregate_single_pairwise.csv'
+		self.dataset_outcome_file = '../features/features_20180520-005740_processed_99_standard/chart_outcomes.csv'
+		self.dataset_level_index  = None
 		if not os.path.exists(self.save_folder):
 			os.mkdir(self.save_folder)
 
@@ -43,6 +46,19 @@ class Extracter(object):
 			encoding='utf-8'
 		)
 		return df
+
+
+	def load_dataset_features_and_outcomes(self):
+		features_df = pd.read_csv(self.dataset_feature_file)
+		outcomes_df = pd.read_csv(self.dataset_outcome_file)
+		self.logger.log('Read Dataset-level Features: ' + str(features_df.shape))
+		self.logger.log('Read Dataset-level Outcomes: ' + str(outcomes_df.shape))
+		features_df['feature_index'] = features_df.index
+		outcomes_df['outcome_index'] = outcomes_df.index
+		features_df = features_df[['fid', 'feature_index']]
+		outcomes_df = outcomes_df[['fid', 'outcome_index']]
+		dataset_level_index = pd.merge(features_df, outcomes_df, on='fid', how='inner') # 删除没有common fid的项
+		self.dataset_level_index = dataset_level_index
 
 
 	def enumerate_chunks(self):
@@ -105,29 +121,34 @@ class Extracter(object):
 				self.logger.log('')
 				if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
 
-		self.logger.log('Finish. Total skipped charts num: {}'.format(self.num_charts_exceeding_max_fields))
 
 
 	def extract_chunk_data(self, chunk):
 		'''modified from feature_extraction.extract.extract_chunk_features'''
-		chunk_df = clean_chunk(chunk)
-		num_valid_charts = chunk_df.shape[0]
-		for chart_num, chart_obj in chunk_df.iterrows():
-			fid = chart_obj.fid
-			table_data = chart_obj.table_data
-			fields = table_data[list(table_data.keys())[0]]['cols']
-			sorted_fields = sorted(fields.items(), key=lambda x: x[1]['order'])
-			num_fields = len(sorted_fields)
-			if num_fields > self.MAX_FIELDS:
-				num_valid_charts -= 1
-				self.logger.log('Skip chart [{}] with {} fields'.format(fid, num_fields))
-				continue
-			# self.extract_chart_data(chart_obj)
-		return {'num_valid_charts': num_valid_charts}
-			# chart_outcomes = extract_chart_outcomes(chart_obj)
-			# field_outcomes = extract_field_outcomes(chart_obj)
-			# instance = Instance(fid, sorted_fields, chart_outcomes, field_outcomes)
-			# instance.to_single_html()
+		# chunk_df = clean_chunk(chunk)
+		# num_valid_charts = chunk_df.shape[0]
+		# for chart_num, chart_obj in chunk_df.iterrows():
+		# 	fid = chart_obj.fid
+		# 	table_data = chart_obj.table_data
+		# 	fields = table_data[list(table_data.keys())[0]]['cols']
+		# 	sorted_fields = sorted(fields.items(), key=lambda x: x[1]['order'])
+		# 	num_fields = len(sorted_fields)
+		# 	if num_fields > self.MAX_FIELDS:
+		# 		num_valid_charts -= 1
+		# 		self.logger.log('Skip chart [{}] with {} fields'.format(fid, num_fields))
+		# 		continue
+		# 	# self.extract_chart_data(chart_obj)
+		
+		# 	# chart_outcomes = extract_chart_outcomes(chart_obj)
+		# 	# field_outcomes = extract_field_outcomes(chart_obj)
+		# 	# instance = Instance(fid, sorted_fields, chart_outcomes, field_outcomes)
+		# 	# instance.to_single_html()
+		# return {'num_valid_charts': num_valid_charts}
+
+		# if self.dataset_level_index == None:
+		# 	self.load_dataset_features_and_outcomes()
+		chunk = chunk[['fid', 'table_data']]
+		return pd.merge(self.dataset_level_index, chunk, on='fid', how='inner')
 
 
 	def extract_chart_data(self, chart_obj):
@@ -135,12 +156,14 @@ class Extracter(object):
 
 
 	def write_batch_results(self, batch_results):
-		if self.first_batch:
-			self.logger.log('fucccccccccck')
+		output_file_name = self.save_folder + 'fid_dataset_index.csv'
+		for df in batch_results:
+			df.to_csv(output_file_name, mode='a', index=False, header=self.first_batch)
 		self.first_batch = False
 
 
 if __name__ == '__main__':
 
 	ex = Extracter('../data/plot_data.tsv', chunk_size=10, parallelize=True)
+	ex.load_dataset_features_and_outcomes()
 	ex.enumerate_chunks()
