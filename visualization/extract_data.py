@@ -17,7 +17,7 @@ from neural_network.logger import logger
 # from feature_extraction.outcomes.field_encoding_outcomes import extract_field_outcomes
 
 class Extracter(object):
-	def __init__(self, data_file, parallelize=True, chunk_size=1000):
+	def __init__(self, data_file, parallelize=True, chunk_size=1000, features_files=[]):
 		if not os.path.exists('./logs/'): os.mkdir('./logs/')
 		log_suffix = str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))
 		log_file = './logs/extracter_log_' + log_suffix + '.txt'
@@ -29,9 +29,13 @@ class Extracter(object):
 		self.save_folder	= './saves/'
 		self.MAX_FIELDS		= 25
 		self.first_batch	= True
-		self.dataset_feature_file = '../features/features_20180520-005740_processed_99_standard/features_aggregate_single_pairwise.csv'
-		self.dataset_outcome_file = '../features/features_20180520-005740_processed_99_standard/chart_outcomes.csv'
-		self.dataset_level_index  = None
+		if len(features_files) != 0:
+			self.dataset_feature_file	= features_files[0]
+			self.dataset_outcome_file	= features_files[1]
+			self.field_feature_file		= features_files[2]
+			self.field_outcome_file		= features_files[3]
+			self.dataset_level_index	= None
+			self.field_level_index		= None
 		if not os.path.exists(self.save_folder):
 			os.mkdir(self.save_folder)
 
@@ -53,12 +57,37 @@ class Extracter(object):
 		outcomes_df = pd.read_csv(self.dataset_outcome_file)
 		self.logger.log('Read Dataset-level Features: ' + str(features_df.shape))
 		self.logger.log('Read Dataset-level Outcomes: ' + str(outcomes_df.shape))
-		features_df['feature_index'] = features_df.index
-		outcomes_df['outcome_index'] = outcomes_df.index
-		features_df = features_df[['fid', 'feature_index']]
-		outcomes_df = outcomes_df[['fid', 'outcome_index']]
+		features_df['dataset_f_index'] = features_df.index
+		outcomes_df['dataset_o_index'] = outcomes_df.index
+		features_df = features_df[['fid', 'dataset_f_index']]
+		outcomes_df = outcomes_df[['fid', 'dataset_o_index']]
 		dataset_level_index = pd.merge(features_df, outcomes_df, on='fid', how='inner') # 删除没有common fid的项
+		self.logger.log('Merged Dataset-level Indexes: ' + str(dataset_level_index.shape))
 		self.dataset_level_index = dataset_level_index
+
+
+	def load_field_features_and_outcomes(self):
+		features_df = pd.read_csv(self.field_feature_file)
+		outcomes_df = pd.read_csv(self.field_outcome_file)
+		self.logger.log('Read Field-level Features: ' + str(features_df.shape))
+		self.logger.log('Read Field-level Outcomes: ' + str(outcomes_df.shape))
+		features_df['level_f_index'] = features_df.index
+		outcomes_df['level_o_index'] = outcomes_df.index
+		features_df = features_df[['fid', 'field_id', 'level_f_index']]
+		outcomes_df = outcomes_df[['fid', 'field_id', 'level_o_index']]
+		field_level_index = pd.merge(features_df, outcomes_df, on='field_id', how='inner') # 删除没有common field_id的项
+		# field_level_index = field_level_index.sort_values(by='fid', axis=0)
+		self.logger.log('Merged Field-level Indexes: ' + str(field_level_index.shape))
+		group_field_id_col = field_level_index.groupby('fid').apply(lambda x: x['field_id'].tolist())
+		group_f_index_col = field_level_index.groupby('fid').apply(lambda x: x['level_f_index'].tolist())
+		group_o_index_col = field_level_index.groupby('fid').apply(lambda x: x['level_o_index'].tolist())
+		self.logger.log('Grouped Field-level features by fid and get {} charts'.formate(len(group_f_index_col)))
+		field_level_index = pd.DataFrame({
+			'level_f_indexes': group_f_index_col,
+			'level_o_indexes': group_o_index_col,
+			'level_field_ids': group_field_id_col})
+		field_level_index.insert(0, 'fid', field_level_index.index)
+		self.field_level_index = field_level_index
 
 
 	def enumerate_chunks(self):
@@ -122,7 +151,6 @@ class Extracter(object):
 				if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
 
 
-
 	def extract_chunk_data(self, chunk):
 		'''modified from feature_extraction.extract.extract_chunk_features'''
 		# chunk_df = clean_chunk(chunk)
@@ -164,6 +192,13 @@ class Extracter(object):
 
 if __name__ == '__main__':
 
-	ex = Extracter('../data/plot_data.tsv', chunk_size=10, parallelize=True)
-	ex.load_dataset_features_and_outcomes()
-	ex.enumerate_chunks()
+
+	dataset_feature_file	= '../features/features_20180520-005740_processed_99_standard/features_aggregate_single_pairwise.csv'
+	dataset_outcome_file	= '../features/features_20180520-005740_processed_99_standard/chart_outcomes.csv'
+	field_feature_file		= '../features/features_20180520-005740_processed_99_standard/field_level_features.csv'
+	field_outcome_file		= '../features/features_20180520-005740_processed_99_standard/field_level_outcomes.csv'
+	features_files = [dataset_feature_file, dataset_outcome_file, field_feature_file, field_outcome_file]
+	ex = Extracter('../data/plot_data.tsv', chunk_size=1000, parallelize=False, features_files=features_files)
+	# ex.load_dataset_features_and_outcomes()
+	ex.load_field_features_and_outcomes()
+	# ex.enumerate_chunks()
