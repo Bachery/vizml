@@ -40,18 +40,7 @@ class Extracter(object):
 			os.mkdir(self.save_folder)
 
 
-	def load_raw_data(self, data_file, chunk_size=1000):
-		self.logger.log('Loading raw data from ' + data_file)
-		df = pd.read_csv(
-			data_file,
-			sep='\t',
-			error_bad_lines=False,
-			chunksize=chunk_size,
-			encoding='utf-8'
-		)
-		return df
-
-
+### deal with provided features
 	def load_dataset_features_and_outcomes(self):
 		features_df = pd.read_csv(self.dataset_feature_file)
 		outcomes_df = pd.read_csv(self.dataset_outcome_file)
@@ -88,6 +77,32 @@ class Extracter(object):
 			'level_field_ids': group_field_id_col})
 		field_level_index.insert(0, 'fid', field_level_index.index)
 		self.field_level_index = field_level_index
+
+
+	def save_indexes(self):
+		self.dataset_level_index.to_csv(self.save_folder + 'dataset_level_index.csv', index=False)
+		self.field_level_index.to_csv(self.save_folder + 'field_level_index.csv', index=False)
+
+
+	def load_indexes(self):
+		self.dataset_level_index = pd.read_csv(self.save_folder + 'dataset_level_index.csv')
+		self.field_level_index = pd.read_csv(self.save_folder + 'field_level_index.csv')
+		self.merged_feature_index = pd.merge(self.dataset_level_index, self.field_level_index, on='fid', how='inner')
+		self.logger.log('merge features indexes :' + str(self.merged_feature_index.shape))
+		self.merged_feature_index.to_csv(self.save_folder + 'merged_feature_index.csv', index=False)
+
+
+### deal with raw data
+	def load_raw_data(self, data_file, chunk_size=1000):
+		self.logger.log('Loading raw data from ' + data_file)
+		df = pd.read_csv(
+			data_file,
+			sep='\t',
+			error_bad_lines=False,
+			chunksize=chunk_size,
+			encoding='utf-8'
+		)
+		return df
 
 
 	def enumerate_chunks(self):
@@ -190,26 +205,24 @@ class Extracter(object):
 		self.first_batch = False
 
 
-	def save_indexes(self):
-		self.dataset_level_index.to_csv(self.save_folder + 'dataset_level_index.csv', index=False)
-		self.field_level_index.to_csv(self.save_folder + 'field_level_index.csv', index=False)
-
-	def load_indexes(self):
-		self.dataset_level_index = pd.read_csv(self.save_folder + 'dataset_level_index.csv')
-		self.field_level_index = pd.read_csv(self.save_folder + 'field_level_index.csv')
-
 
 if __name__ == '__main__':
 
-	dataset_feature_file	= '../features/features_20180520-005740_processed_99_standard/features_aggregate_single_pairwise.csv'
-	dataset_outcome_file	= '../features/features_20180520-005740_processed_99_standard/chart_outcomes.csv'
-	field_feature_file		= '../features/features_20180520-005740_processed_99_standard/field_level_features.csv'
-	field_outcome_file		= '../features/features_20180520-005740_processed_99_standard/field_level_outcomes.csv'
+	# dataset_feature_file	= '../features/features_20180520-005740_processed_99_standard/features_aggregate_single_pairwise.csv'
+	# dataset_outcome_file	= '../features/features_20180520-005740_processed_99_standard/chart_outcomes.csv'
+	# field_feature_file		= '../features/features_20180520-005740_processed_99_standard/field_level_features.csv'
+	# field_outcome_file		= '../features/features_20180520-005740_processed_99_standard/field_level_outcomes.csv'
+	dataset_feature_file	= '../features/raw_1k/features_aggregate_single_pairwise.csv'
+	dataset_outcome_file	= '../features/raw_1k/chart_outcomes.csv'
+	field_feature_file		= '../features/raw_1k/field_level_features.csv'
+	field_outcome_file		= '../features/raw_1k/field_level_outcomes.csv'
+
 	features_files = [dataset_feature_file, dataset_outcome_file, field_feature_file, field_outcome_file]
 	ex = Extracter('../data/plot_data.tsv', chunk_size=1000, parallelize=False, features_files=features_files)
 	
-	ex.load_dataset_features_and_outcomes()
-	ex.load_field_features_and_outcomes()
-	ex.save_indexes()
+	# ex.load_dataset_features_and_outcomes()
+	# ex.load_field_features_and_outcomes()
+	# ex.save_indexes()
 	
+	ex.load_indexes()
 	# ex.enumerate_chunks()
