@@ -106,6 +106,33 @@ class Extracter(object):
 		return df
 
 
+	def partition_and_save_raw_data(self):
+		raw_df_chunks = self.load_raw_data(self.data_file, chunk_size=self.chunk_size)
+		self.logger.log('Start traversing chunks')
+		for i, chunk in enumerate(raw_df_chunks):
+			chunk_num = i + 1
+			chunk_start_time = time.time()
+			chunk.to_csv(self.save_folder + 'chunks/chunk_{}.csv'.format(chunk_num), index=False)
+			chunk_time_cost = time.time() - chunk_start_time
+			self.logger.log('Finish chunk {}\tTime cost: {:.1f}s'.format(chunk_num, chunk_time_cost))
+			if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
+
+
+	def save_all_indexes(self):
+		self.load_indexes()
+		raw_df_chunks = self.load_raw_data(self.data_file, chunk_size=self.chunk_size)
+		self.logger.log('Start traversing chunks')
+		for i, chunk in enumerate(raw_df_chunks):
+			chunk_num = i + 1
+			chunk_start_time = time.time()
+			chunk_id = pd.DataFrame({'chart_index': chunk.index, 'fid': chunk.fid})
+			chunk_all_id = pd.merge(chunk_id, self.merged_feature_index, on='fid', how='inner')
+			self.write_batch_results([chunk_all_id], 'all_indexes.csv')
+			chunk_time_cost = time.time() - chunk_start_time
+			self.logger.log('Finish chunk {}\tTime cost: {:.1f}s'.format(chunk_num, chunk_time_cost))
+			if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
+
+
 	def enumerate_chunks(self):
 		raw_df_chunks = self.load_raw_data(self.data_file, chunk_size=self.chunk_size)
 		self.logger.log('Start traversing chunks')
@@ -158,9 +185,8 @@ class Extracter(object):
 				chunk_num = i + 1
 				self.logger.log('Start chunk {}'.format(chunk_num))
 				chunk_start_time = time.time()
-				chunk.to_csv(self.save_folder + 'chunks/chunk_{}.csv'.format(chunk_num), index=False)
-				# chunk_result = self.extract_chunk_data(chunk, chunk_num)
-				# self.write_batch_results([chunk_result])
+				chunk_result = self.extract_chunk_data(chunk, chunk_num)
+				self.write_batch_results([chunk_result])
 				chunk_time_cost = time.time() - chunk_start_time
 				self.logger.log('Finish chunk {}'.format(chunk_num))
 				self.logger.log('Time cost: {:.1f}s'.format(chunk_time_cost))
@@ -196,18 +222,14 @@ class Extracter(object):
 		# chunk = chunk[['fid', 'table_data']]
 		# return pd.merge(self.dataset_level_index, chunk, on='fid', how='inner')
 
-		# start_chart_num = (chunk_num-1) * self.chunk_size	# index从0开始
-		# chart_idxes = pd.Series(range(start_chart_num, start_chart_num+len(chunk)))
-		# chunk.insert(0, 'chart_index', chart_idxes)
-		chunk.to_csv(self.save_folder + 'chunks/chunk_{}.csv'.format(chunk_num), index=False)
-
 
 	def extract_chart_data(self, chart_obj):
 		pass
 
 
-	def write_batch_results(self, batch_results):
-		output_file_name = self.save_folder + 'fid_dataset_index.csv'
+	def write_batch_results(self, batch_results, file_name):
+		# output_file_name = self.save_folder + 'fid_dataset_index.csv'
+		output_file_name = self.save_folder + file_name
 		for df in batch_results:
 			df.to_csv(output_file_name, mode='a', index=False, header=self.first_batch)
 		self.first_batch = False
@@ -232,5 +254,6 @@ if __name__ == '__main__':
 	# ex.load_field_features_and_outcomes()
 	# ex.save_indexes()
 	
-	# ex.load_indexes()
-	ex.enumerate_chunks()
+	# ex.enumerate_chunks()
+	
+	ex.save_all_indexes()
