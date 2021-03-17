@@ -74,14 +74,14 @@ class Extracter(object):
 		features_df['level_f_index'] = features_df.index
 		outcomes_df['level_o_index'] = outcomes_df.index
 		features_df = features_df[['fid', 'field_id', 'level_f_index']]
-		outcomes_df = outcomes_df[['fid', 'field_id', 'level_o_index']]
+		outcomes_df = outcomes_df[[       'field_id', 'level_o_index']]
 		field_level_index = pd.merge(features_df, outcomes_df, on='field_id', how='inner') # 删除没有common field_id的项
 		# field_level_index = field_level_index.sort_values(by='fid', axis=0)
 		self.logger.log('Merged Field-level Indexes: ' + str(field_level_index.shape))
 		group_field_id_col = field_level_index.groupby('fid').apply(lambda x: x['field_id'].tolist())
 		group_f_index_col = field_level_index.groupby('fid').apply(lambda x: x['level_f_index'].tolist())
 		group_o_index_col = field_level_index.groupby('fid').apply(lambda x: x['level_o_index'].tolist())
-		self.logger.log('Grouped Field-level features by fid and get {} charts'.formate(len(group_f_index_col)))
+		self.logger.log('Grouped Field-level features by fid and get {} charts'.format(len(group_f_index_col)))
 		field_level_index = pd.DataFrame({
 			'level_f_indexes': group_f_index_col,
 			'level_o_indexes': group_o_index_col,
@@ -190,8 +190,16 @@ class Extracter(object):
 		self.first_batch = False
 
 
-if __name__ == '__main__':
+	def save_indexes(self):
+		self.dataset_level_index.to_csv(self.save_folder + 'dataset_level_index.csv', index=False)
+		self.field_level_index.to_csv(self.save_folder + 'field_level_index.csv', index=False)
 
+	def load_indexes(self):
+		self.dataset_level_index = pd.read_csv(self.save_folder + 'dataset_level_index.csv')
+		self.field_level_index = pd.read_csv(self.save_folder + 'field_level_index.csv')
+
+
+if __name__ == '__main__':
 
 	dataset_feature_file	= '../features/features_20180520-005740_processed_99_standard/features_aggregate_single_pairwise.csv'
 	dataset_outcome_file	= '../features/features_20180520-005740_processed_99_standard/chart_outcomes.csv'
@@ -199,6 +207,9 @@ if __name__ == '__main__':
 	field_outcome_file		= '../features/features_20180520-005740_processed_99_standard/field_level_outcomes.csv'
 	features_files = [dataset_feature_file, dataset_outcome_file, field_feature_file, field_outcome_file]
 	ex = Extracter('../data/plot_data.tsv', chunk_size=1000, parallelize=False, features_files=features_files)
-	# ex.load_dataset_features_and_outcomes()
+	
+	ex.load_dataset_features_and_outcomes()
 	ex.load_field_features_and_outcomes()
+	ex.save_indexes()
+	
 	# ex.enumerate_chunks()
