@@ -82,14 +82,15 @@ class Extracter(object):
 	def save_indexes(self):
 		self.dataset_level_index.to_csv(self.save_folder + 'dataset_level_index.csv', index=False)
 		self.field_level_index.to_csv(self.save_folder + 'field_level_index.csv', index=False)
+		# self.merged_feature_index = pd.merge(self.dataset_level_index, self.field_level_index, on='fid', how='inner')
+		# self.logger.log('merge features indexes :' + str(self.merged_feature_index.shape))
+		# self.merged_feature_index.to_csv(self.save_folder + 'merged_feature_index.csv', index=False)
 
 
 	def load_indexes(self):
-		self.dataset_level_index = pd.read_csv(self.save_folder + 'dataset_level_index.csv')
-		self.field_level_index = pd.read_csv(self.save_folder + 'field_level_index.csv')
-		self.merged_feature_index = pd.merge(self.dataset_level_index, self.field_level_index, on='fid', how='inner')
-		self.logger.log('merge features indexes :' + str(self.merged_feature_index.shape))
-		self.merged_feature_index.to_csv(self.save_folder + 'merged_feature_index.csv', index=False)
+		# self.dataset_level_index = pd.read_csv(self.save_folder + 'dataset_level_index.csv')
+		# self.field_level_index = pd.read_csv(self.save_folder + 'field_level_index.csv')
+		self.merged_feature_index = pd.read_csv(self.save_folder + 'merged_feature_index.csv')
 
 
 ### deal with raw data
@@ -135,7 +136,7 @@ class Extracter(object):
 					batch_num	+= 1
 					chunk_batch	= []
 					pool.close()
-				if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
+				# if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
 			# process left overs
 			if len(chunk_batch) != 0:
 				self.logger.log('Start last batch {} [chunk {} ~ {}]'.format(
@@ -157,16 +158,17 @@ class Extracter(object):
 				chunk_num = i + 1
 				self.logger.log('Start chunk {}'.format(chunk_num))
 				chunk_start_time = time.time()
-				chunk_result = self.extract_chunk_data(chunk)
-				self.write_batch_results([chunk_result])
+				chunk.to_csv(self.save_folder + 'chunks/chunk_{}.csv'.format(chunk_num), index=False)
+				# chunk_result = self.extract_chunk_data(chunk, chunk_num)
+				# self.write_batch_results([chunk_result])
 				chunk_time_cost = time.time() - chunk_start_time
 				self.logger.log('Finish chunk {}'.format(chunk_num))
 				self.logger.log('Time cost: {:.1f}s'.format(chunk_time_cost))
 				self.logger.log('')
-				if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
+				# if chunk_num == 2101: break		# 文件第2101979行会报错，暂时没找到解决方案
 
 
-	def extract_chunk_data(self, chunk):
+	def extract_chunk_data(self, chunk, chunk_num):
 		'''modified from feature_extraction.extract.extract_chunk_features'''
 		# chunk_df = clean_chunk(chunk)
 		# num_valid_charts = chunk_df.shape[0]
@@ -190,8 +192,14 @@ class Extracter(object):
 
 		# if self.dataset_level_index == None:
 		# 	self.load_dataset_features_and_outcomes()
-		chunk = chunk[['fid', 'table_data']]
-		return pd.merge(self.dataset_level_index, chunk, on='fid', how='inner')
+
+		# chunk = chunk[['fid', 'table_data']]
+		# return pd.merge(self.dataset_level_index, chunk, on='fid', how='inner')
+
+		# start_chart_num = (chunk_num-1) * self.chunk_size	# index从0开始
+		# chart_idxes = pd.Series(range(start_chart_num, start_chart_num+len(chunk)))
+		# chunk.insert(0, 'chart_index', chart_idxes)
+		chunk.to_csv(self.save_folder + 'chunks/chunk_{}.csv'.format(chunk_num), index=False)
 
 
 	def extract_chart_data(self, chart_obj):
@@ -224,5 +232,5 @@ if __name__ == '__main__':
 	# ex.load_field_features_and_outcomes()
 	# ex.save_indexes()
 	
-	ex.load_indexes()
-	# ex.enumerate_chunks()
+	# ex.load_indexes()
+	ex.enumerate_chunks()
